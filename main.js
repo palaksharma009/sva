@@ -1,6 +1,8 @@
 /* ============================================================================
    Main app — board, the three categories, goals, tasks, timer, reminders.
-   Everything is stored in this browser's localStorage. Nothing leaves the page.
+   Everything is stored in this browser's localStorage. With cloud-config.js
+   filled in, you sign in first and the same data is kept in your account
+   (sync.js), so it follows you to every device.
 
    Data shape:
      goals: [{ id, category, title, description, target,
@@ -11,7 +13,10 @@
                                     timer: { enabled, minutes, dot } }] }] }]
      done:  { 'taskId|YYYY-MM-DD': true,          scheduled task, ticked that day
               'taskId|once': 'YYYY-MM-DD' }       unscheduled task, day it was ticked
-     fired: { 'taskId|YYYY-MM-DD': true }         reminders already shown
+     fired: { 'taskId|YYYY-MM-DD': true }         reminders already shown (this device only)
+     updated, owner, dirty                        sync bookkeeping: time of the last edit,
+                                                  whose account this copy belongs to,
+                                                  and whether it still has to be uploaded
    ============================================================================ */
 
 (function () {
@@ -54,14 +59,27 @@
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && Array.isArray(s.goals)) return { goals: s.goals, done: s.done || {}, fired: s.fired || {} };
+      if (s && Array.isArray(s.goals)) {
+        return { goals: s.goals, done: s.done || {}, fired: s.fired || {}, updated: s.updated || 0, owner: s.owner || null, dirty: !!s.dirty };
+      }
     } catch (e) { /* corrupt or blocked storage — start empty */ }
-    return { goals: [], done: {}, fired: {} };
+    return blank();
   }
 
-  function save() {
+  function blank() { return { goals: [], done: {}, fired: {}, updated: 0, owner: null, dirty: false }; }
+
+  /* Write to this device only. */
+  function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
     catch (e) { toast({ title: 'Could not save', body: 'Your browser blocked storage, so changes will be lost on refresh.' }); }
+  }
+
+  /* An edit: write it here, then send it to your account. */
+  function save() {
+    state.updated = Date.now();
+    state.dirty = true;
+    persist();
+    queueSync();
   }
 
   function entries() {
@@ -125,10 +143,18 @@
   }
 
   function render() {
+    if (locked()) { view.replaceChildren(); return; }
     const r = route();
     for (const a of document.querySelectorAll('#top a[data-route]')) a.classList.toggle('active', a.dataset.route === r);
     if (r === 'board') renderBoard();
-    else if (r === 'about') view.replaceChildren($('about-content').content.cloneNode(true));   // text lives in index.html
+    else if (r === 'about') {
+      view.replaceChildren($('about-content').content.cloneNode(true));   // text lives in index.html
+      const acc = view.querySelector('[data-account]');
+      if (acc && signedIn()) {
+        acc.hidden = false;
+        acc.querySelector('[data-email]').textContent = Cloud.user().email || '';
+      }
+    }
     else renderCategory(catOf(r));
   }
 
@@ -675,6 +701,7 @@
   }
 
   function checkReminders() {
+    if (locked()) return;
     const today = Schedule.today();
     const now = new Date();
     const mins = now.getHours() * 60 + now.getMinutes();
@@ -704,7 +731,7 @@
       chime(1);
       notify(t.title, body);
     }
-    if (changed) save();
+    if (changed) persist();
   }
 
   /* Phones only allow notifications through the service worker; desktops allow both. */
@@ -757,6 +784,8 @@
     }));
   }
 
+  function cleanDone(d) { return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; }
+
   $('import-file').addEventListener('change', async e => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -769,9 +798,9 @@
       toast({ title: 'Could not load that file', body: 'It is not a Sva backup.' });
       return;
     }
-    if (state.goals.length && !confirm('Replace everything in Sva on this device with the backup?')) return;
+    if (state.goals.length && !confirm('Replace everything in Sva with the backup?')) return;
     const goals = cleanGoals(data.goals);
-    state = { goals, done: data.done && typeof data.done === 'object' ? data.done : {}, fired: {} };
+    state = Object.assign(blank(), { goals, done: cleanDone(data.done), owner: state.owner });
     sel = null;
     save();
     render();
@@ -783,7 +812,150 @@
     if (!b) return;
     if (b.dataset.act === 'export') exportData();
     else if (b.dataset.act === 'import') $('import-file').click();
+    else if (b.dataset.act === 'signout') signOut();
   });
+
+  /* --- account + sync ----------------------------------------------------------------
+     One copy of { goals, done } lives in your account. The newest edit wins: every
+     edit is stamped with the time, and whichever side has the later stamp replaces
+     the other. Edits made without signal are sent the next time Sva is online. */
+
+  function signedIn() { return Cloud.enabled && !!Cloud.user(); }
+  function locked() { return Cloud.enabled && !Cloud.user(); }
+
+  let syncTimer = null;
+  let syncChain = Promise.resolve();
+  let setupWarned = false;
+
+  function setSync(text) { $('sync-state').textContent = text; }
+
+  function queueSync() {
+    if (!signedIn()) return;
+    setSync('Saving…');
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(sync, 1500);
+  }
+
+  function sync() {
+    clearTimeout(syncTimer);
+    syncChain = syncChain.then(syncNow);       // one at a time, in order
+    return syncChain;
+  }
+
+  async function syncNow() {
+    if (!signedIn()) return;
+    const uid = Cloud.user().uid;
+    try {
+      const got = await Cloud.pull();
+      if (!signedIn() || Cloud.user().uid !== uid) return;
+      const remote = got && Array.isArray(got.goals)
+        ? { goals: cleanGoals(got.goals), done: cleanDone(got.done), updated: Number(got.updated) || 0 }
+        : null;
+      const editing = !!document.querySelector('dialog[open]');     // don't swap data under an open form
+      let changed = false;
+
+      if (state.owner && state.owner !== uid) { state = blank(); changed = true; }   // someone else's leftovers
+
+      if (state.owner !== uid) {
+        // First sync on this device: what was already here is added to the account, nothing is dropped.
+        if (remote) {
+          if (editing) return;
+          const have = new Set(remote.goals.map(g => g.id));
+          const extra = state.goals.filter(g => !have.has(g.id));
+          state.goals = remote.goals.concat(extra);
+          state.done = Object.assign({}, state.done, remote.done);
+          state.updated = extra.length ? Date.now() : remote.updated;
+          state.dirty = extra.length > 0;
+          changed = true;
+        } else {
+          state.updated = state.updated || Date.now();
+          state.dirty = true;
+        }
+        state.owner = uid;
+      } else if (remote && remote.updated > state.updated) {
+        if (editing) return;
+        state.goals = remote.goals;
+        state.done = remote.done;
+        state.updated = remote.updated;
+        state.dirty = false;
+        changed = true;
+      } else if (!remote || remote.updated < state.updated) {
+        state.dirty = true;
+      }
+
+      persist();
+      if (changed) render();
+
+      if (state.dirty) {
+        const sent = state.updated;
+        await Cloud.push({ goals: state.goals, done: state.done, updated: sent });
+        if (state.updated === sent) { state.dirty = false; persist(); }
+      }
+      setSync(state.dirty ? 'Saving…' : 'Saved');
+    } catch (e) {
+      if (e.code === 'signed-out') { lock('Your session ended. Please sign in again.'); return; }
+      setSync(e.code === 'offline' ? 'Offline' : 'Not saved');
+      if (e.code === 'setup' && !setupWarned) {
+        setupWarned = true;
+        toast({ title: 'Could not reach your account data', body: 'The database or its rules are not set up yet in Firebase. Changes are kept on this device for now.' });
+      }
+    }
+  }
+
+  function lock(message) {
+    setSync('');
+    document.body.classList.add('locked');
+    view.replaceChildren();
+    $('login-error').textContent = message || '';
+    $('login-error').hidden = !message;
+    $('login').hidden = false;
+    $('l-email').focus();
+  }
+
+  const LOGIN_ERRORS = {
+    wrong: 'That email and password do not match.',
+    'too-many': 'Too many attempts. Wait a few minutes and try again.',
+    offline: 'No connection. You need to be online to sign in.',
+    setup: 'Sign-in is not set up yet in Firebase (check cloud-config.js and that Email/Password is enabled).',
+  };
+
+  $('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('login-submit');
+    btn.disabled = true;
+    $('login-error').hidden = true;
+    try {
+      await Cloud.signIn($('l-email').value.trim(), $('l-pass').value);
+      $('l-pass').value = '';
+      $('login').hidden = true;
+      document.body.classList.remove('locked');
+      setSync('Syncing…');
+      render();
+      sync();
+    } catch (err) {
+      $('login-error').textContent = LOGIN_ERRORS[err.code] || 'Could not sign in. Try again.';
+      $('login-error').hidden = false;
+    }
+    btn.disabled = false;
+  });
+
+  async function signOut() {
+    if (state.dirty) {
+      await sync();
+      if (!signedIn()) return;
+      if (state.dirty && !confirm('Some changes have not reached your account yet. Sign out anyway and lose them?')) return;
+    }
+    Cloud.signOut();
+    try { localStorage.removeItem(KEY); } catch (e) { /* nothing to clear */ }   // leave nothing behind on this device
+    state = blank();
+    sel = null;
+    lock();
+  }
+
+  // leaving the page sends what is pending; coming back fetches what changed elsewhere
+  document.addEventListener('visibilitychange', () => { if (signedIn()) sync(); });
+  window.addEventListener('online', () => { if (signedIn()) sync(); });
+  setInterval(() => { if (signedIn() && !document.hidden) sync(); }, 60000);
 
   /* Installable + offline, when served over https (GitHub Pages) or localhost. */
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
@@ -793,7 +965,12 @@
   /* --- go ---------------------------------------------------------------------------- */
 
   window.addEventListener('hashchange', render);
-  render();
+  if (locked()) {
+    lock();
+  } else {
+    render();
+    if (signedIn()) { setSync('Syncing…'); sync(); }
+  }
   checkReminders();
   setInterval(checkReminders, 15000);
 })();

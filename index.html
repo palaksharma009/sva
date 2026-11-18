@@ -20,8 +20,25 @@
       <a href="#spiritual" data-route="spiritual">Spiritual</a>
       <a href="#intellectual" data-route="intellectual">Intellectual</a>
     </nav>
+    <span id="sync-state" aria-live="polite"></span>
     <a class="about-link" href="#about" data-route="about">About</a>
   </header>
+
+  <!-- shown instead of the app until you sign in (only when cloud-config.js is filled in) -->
+  <div id="login" hidden>
+    <form id="login-form">
+      <p class="brand"><span class="brand-dot"></span>Sva</p>
+      <h1>Sign in</h1>
+      <label class="field"><span>Email</span>
+        <input id="l-email" type="email" required autocomplete="username">
+      </label>
+      <label class="field"><span>Password</span>
+        <input id="l-pass" type="password" required autocomplete="current-password">
+      </label>
+      <p id="login-error" class="error" hidden></p>
+      <button id="login-submit" type="submit" class="primary">Sign in</button>
+    </form>
+  </div>
 
   <main id="view"></main>
 
@@ -48,12 +65,20 @@
       <p>The breathing dot lives on the Spiritual page. Open it any time you want a few calm minutes, or attach it to a task's timer.</p>
 
       <h2>Good to know</h2>
-      <p>Everything you enter stays on the device you entered it on. Nothing is sent anywhere. Reminders appear while Sva is open.</p>
-      <p>Your phone and your computer each keep their own copy. To carry your goals from one to the other, save a backup file on the first and load it on the second.</p>
+      <p>Your goals are kept in your own account, behind your email and password, so they are the same on your phone, your computer and anywhere else you sign in. Nobody else can open them. Reminders appear while Sva is open.</p>
+      <p>A copy also stays on the device, so Sva still works without signal and catches up once you are back online. A backup file is there if you want a copy of your own.</p>
       <p class="about-btns">
         <button type="button" data-act="export">Save a backup file</button>
         <button type="button" data-act="import">Load a backup file</button>
       </p>
+
+      <section data-account hidden>
+        <h2>Your account</h2>
+        <p>Signed in as <strong data-email></strong>. Signing out also removes your goals from this device; they stay safe in your account.</p>
+        <p class="about-btns">
+          <button type="button" data-act="signout">Sign out</button>
+        </p>
+      </section>
 
       <h2>A wish for you</h2>
       <p>May you be patient with yourself on the slow days and proud of yourself on the good ones. May your body grow stronger, your mind clearer and your heart lighter, one small step at a time.</p>
@@ -201,6 +226,8 @@
   <input id="import-file" type="file" accept="application/json,.json" hidden>
 
 <script src="schedule.js"></script>
+<script src="cloud-config.js"></script>
+<script src="sync.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

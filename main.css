@@ -61,7 +61,7 @@ button.small { padding: 3px 9px; font-size: 13px; }
 button.add { background: transparent; border-style: dashed; color: var(--muted); }
 button.add:hover { color: var(--text); }
 
-input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
+input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -407,7 +407,7 @@ legend { padding: 0 6px; }
   .tick { width: 28px; height: 28px; font-size: 15px; }
   .card-main { padding: 2px 0; }
   .weekdays span { padding: 8px 12px; }
-  input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea { padding: 10px; font-size: 16px; }
+  input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select, textarea { padding: 10px; font-size: 16px; }
   .check input { width: 20px; height: 20px; }
 }
 
@@ -417,3 +417,20 @@ legend { padding: 0 6px; }
 /* installed on a phone: keep clear of the notch and the gesture bar */
 #top { padding-top: max(12px, env(safe-area-inset-top)); }
 #timer { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+/* --- sign in -------------------------------------------------------------- */
+
+#sync-state { color: var(--muted); font-size: 13px; white-space: nowrap; }
+body.locked #top, body.locked #view { display: none; }
+#login {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+#login form { display: grid; gap: 14px; width: min(360px, 100%); }
+#login .field > input { font-size: 16px; color: var(--text); }
+#login button { padding: 10px 14px; }

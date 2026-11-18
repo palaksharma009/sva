@@ -1,11 +1,13 @@
 # Sva
 
 A personal board for three areas — Physical, Spiritual, Intellectual — with a
-breathing dot built in. Local files only — nothing is served, nothing phones home.
+breathing dot built in. Plain files, no build step. You sign in, and your data
+follows you to every device.
 
 ## Run it
 
-Double-click `index.html`. That's the whole install.
+Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
+`index.html` works too.)
 
 ## The app
 
@@ -18,26 +20,59 @@ Double-click `index.html`. That's the whole install.
   reminder, and can have a timer. Tick "Show the breathing dot" and the timer
   opens with the dot behind it.
 
-Everything is saved in this browser (`localStorage`). Reminders only fire while
-the page is open in a tab.
+Your data is kept in your account and a copy stays in the browser
+(`localStorage`), so Sva works without signal and catches up afterwards.
+Reminders only fire while the page is open in a tab.
+
+## Login and sync
+
+Sva is a public page, so the login is what keeps your data yours. It uses a
+free Firebase project that you own:
+
+1. [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
+   (Analytics can stay off).
+2. **Build → Authentication → Get started → Email/Password → Enable**. Then
+   **Users → Add user**: this email and password are your Sva login.
+   Under **Settings → User actions**, untick **Enable create (sign-up)** so
+   nobody else can make an account.
+3. **Build → Firestore Database → Create database** (production mode), then
+   **Rules** → replace everything with this and **Publish**:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+4. **Project settings → General → Your apps → `</>` (Web)**, register an app,
+   and copy `apiKey` and `projectId` into `cloud-config.js`.
+
+Those two values are not secrets; your password and the rule above are the lock.
+Sign out is on the About page. If two devices change things at the same time,
+the most recent change wins.
 
 ## On a phone
 
 Sva needs a web address to open on a phone. With GitHub Pages switched on for
 this repo (Settings → Pages → Deploy from a branch → `main`, `/ (root)`), it
-lives at `https://<your-github-name>.github.io/sva/`.
+lives at `https://palaksharma009.github.io/sva/`.
 
 Open that address in Chrome or Samsung Internet, then use the browser menu →
 **Add to Home screen** / **Install app**. After that it opens like any other
 app and works without signal.
 
-Your phone and your computer each keep their own data. To move it across:
-About → **Save a backup file** on one, **Load a backup file** on the other.
+Sign in with the same email and password and the phone shows the same data as
+your computer. About → **Save a backup file** gives you a copy of your own.
 
 | file | what it is |
 |---|---|
 | `manifest.webmanifest`, `sw.js`, `icon-*.png` | what makes it installable and usable offline |
 | `index.html`, `main.css`, `main.js` | the app |
+| `cloud-config.js`, `sync.js` | which Firebase project to use, and the login + sync |
 | `schedule.js` | the repeat rules ("does this task fall on this day?") |
 | `dot.html`, `styles.css`, `app.js`, `config.js` | the breathing dot, unchanged |
 

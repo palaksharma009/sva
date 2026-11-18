@@ -2,11 +2,12 @@
    Service worker — lets Sva be installed on a phone and opened without signal.
    Only runs when the app is served over https (or localhost), not from file://.
 
-   Network first: when online you always get the newest files; the copy kept
+   Network first: when online you always get the newest files (the browser's own
+   short-lived copy is skipped too); the copy kept
    here is only used when the network fails.
    ============================================================================ */
 
-const CACHE = 'sva-v2';
+const CACHE = 'sva-v3';
 const FILES = [
   './', 'index.html', 'main.css', 'main.js', 'schedule.js', 'sync.js', 'cloud-config.js',
   'dot.html', 'styles.css', 'app.js', 'config.js',
@@ -28,7 +29,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })      // ask the server every time, so an update shows at once
       .then(res => {
         if (res.ok) {
           const copy = res.clone();

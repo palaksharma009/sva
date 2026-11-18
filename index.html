@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sva</title>
-<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0d0f12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="main.css">
 </head>
 <body>
@@ -45,7 +48,12 @@
       <p>The breathing dot lives on the Spiritual page. Open it any time you want a few calm minutes, or attach it to a task's timer.</p>
 
       <h2>Good to know</h2>
-      <p>Everything you enter stays in this browser on this computer. Nothing is sent anywhere. Reminders appear while Sva is open in a tab.</p>
+      <p>Everything you enter stays on the device you entered it on. Nothing is sent anywhere. Reminders appear while Sva is open.</p>
+      <p>Your phone and your computer each keep their own copy. To carry your goals from one to the other, save a backup file on the first and load it on the second.</p>
+      <p class="about-btns">
+        <button type="button" data-act="export">Save a backup file</button>
+        <button type="button" data-act="import">Load a backup file</button>
+      </p>
 
       <h2>A wish for you</h2>
       <p>May you be patient with yourself on the slow days and proud of yourself on the good ones. May your body grow stronger, your mind clearer and your heart lighter, one small step at a time.</p>
@@ -190,6 +198,7 @@
   </div>
 
   <div id="toasts" aria-live="polite"></div>
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
 
 <script src="schedule.js"></script>
 <script src="main.js"></script>

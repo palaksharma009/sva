@@ -21,8 +21,22 @@ Double-click `index.html`. That's the whole install.
 Everything is saved in this browser (`localStorage`). Reminders only fire while
 the page is open in a tab.
 
+## On a phone
+
+Sva needs a web address to open on a phone. With GitHub Pages switched on for
+this repo (Settings → Pages → Deploy from a branch → `main`, `/ (root)`), it
+lives at `https://<your-github-name>.github.io/sva/`.
+
+Open that address in Chrome or Samsung Internet, then use the browser menu →
+**Add to Home screen** / **Install app**. After that it opens like any other
+app and works without signal.
+
+Your phone and your computer each keep their own data. To move it across:
+About → **Save a backup file** on one, **Load a backup file** on the other.
+
 | file | what it is |
 |---|---|
+| `manifest.webmanifest`, `sw.js`, `icon-*.png` | what makes it installable and usable offline |
 | `index.html`, `main.css`, `main.js` | the app |
 | `schedule.js` | the repeat rules ("does this task fall on this day?") |
 | `dot.html`, `styles.css`, `app.js`, `config.js` | the breathing dot, unchanged |

@@ -211,7 +211,13 @@
       tick(t, boardDate),
       h('button', {
         type: 'button', class: 'card-main',
-        onclick: () => { sel = selected ? null : { taskId: t.id, date: boardDate }; render(); },
+        onclick: () => {
+          sel = selected ? null : { taskId: t.id, date: boardDate };
+          render();
+          // on a narrow screen the details sit above the columns — bring them into view
+          const d = sel && view.querySelector('.detail');
+          if (d && window.matchMedia('(max-width: 980px)').matches) d.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        },
       },
         h('div', { class: 'card-title' }, t.title),
         h('div', { class: 'card-meta' }, when + ' · ' + e.short.title),
@@ -696,11 +702,92 @@
         action: { label: 'Open', run: () => { boardDate = today; sel = { taskId: t.id, date: today }; location.hash = 'board'; render(); } },
       });
       chime(1);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try { new Notification(t.title, { body }); } catch (err) { /* the toast is enough */ }
-      }
+      notify(t.title, body);
     }
     if (changed) save();
+  }
+
+  /* Phones only allow notifications through the service worker; desktops allow both. */
+  function notify(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const viaPage = () => { try { new Notification(title, { body }); } catch (err) { /* the toast is enough */ } };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png' }))
+        .catch(viaPage);
+    } else {
+      viaPage();
+    }
+  }
+
+  /* --- backup: move your data between devices -------------------------------------- */
+
+  function exportData() {
+    const data = { app: 'sva', version: 1, saved: new Date().toISOString(), goals: state.goals, done: state.done };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const a = h('a', { href: url, download: 'sva-backup-' + Schedule.today() + '.json' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  /* Keep only what looks like our data; anything malformed is dropped, not trusted. */
+  function cleanGoals(list) {
+    const str = v => (typeof v === 'string' ? v : '');
+    return list.filter(g => g && typeof g === 'object' && str(g.title)).map(g => ({
+      id: str(g.id) || uid(),
+      category: CATS.some(c => c.id === g.category) ? g.category : 'physical',
+      title: str(g.title), description: str(g.description), target: str(g.target),
+      shorts: (Array.isArray(g.shorts) ? g.shorts : []).filter(s => s && typeof s === 'object' && str(s.title)).map(s => ({
+        id: str(s.id) || uid(),
+        title: str(s.title), description: str(s.description), target: str(s.target),
+        tasks: (Array.isArray(s.tasks) ? s.tasks : []).filter(t => t && typeof t === 'object' && str(t.title)).map(t => ({
+          id: str(t.id) || uid(),
+          title: str(t.title), description: str(t.description),
+          schedule: t.schedule && typeof t.schedule === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(t.schedule.start) ? t.schedule : null,
+          reminder: { enabled: !!(t.reminder && t.reminder.enabled), before: parseInt(t.reminder && t.reminder.before, 10) || 0 },
+          timer: {
+            enabled: !!(t.timer && t.timer.enabled),
+            minutes: Math.min(600, Math.max(1, parseInt(t.timer && t.timer.minutes, 10) || 15)),
+            dot: !!(t.timer && t.timer.dot),
+          },
+        })),
+      })),
+    }));
+  }
+
+  $('import-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+      if (!data || !Array.isArray(data.goals)) throw new Error('not a backup');
+    } catch (err) {
+      toast({ title: 'Could not load that file', body: 'It is not a Sva backup.' });
+      return;
+    }
+    if (state.goals.length && !confirm('Replace everything in Sva on this device with the backup?')) return;
+    const goals = cleanGoals(data.goals);
+    state = { goals, done: data.done && typeof data.done === 'object' ? data.done : {}, fired: {} };
+    sel = null;
+    save();
+    render();
+    toast({ title: 'Backup loaded', body: goals.length + (goals.length === 1 ? ' long-term goal' : ' long-term goals') + ' restored.' });
+  });
+
+  view.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'export') exportData();
+    else if (b.dataset.act === 'import') $('import-file').click();
+  });
+
+  /* Installable + offline, when served over https (GitHub Pages) or localhost. */
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* app works without it */ });
   }
 
   /* --- go ---------------------------------------------------------------------------- */

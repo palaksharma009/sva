@@ -387,6 +387,33 @@ legend { padding: 0 6px; }
   .detail { position: static; order: -1; }
 }
 @media (max-width: 560px) {
-  #top { padding: 10px 16px; gap: 10px; }
+  #top { padding: 8px 12px; gap: 4px 8px; }
+  #nav { order: 3; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto; }
+  #nav a { padding: 6px 10px; white-space: nowrap; }
+  .about-link { margin-left: auto; }
   #view { padding: 20px 16px 50px; }
+  h1 { font-size: 22px; }
+  .about h1 { font-size: 34px; }
+  dialog { padding: 16px; }
+  .timer-top { padding: 12px; }
+  #timer-title { font-size: 18px; }
+  #toasts { right: 12px; bottom: 12px; }
 }
+
+/* fingers need bigger targets than a mouse pointer */
+@media (pointer: coarse) {
+  button { padding: 9px 14px; }
+  button.small { padding: 7px 12px; font-size: 14px; }
+  .tick { width: 28px; height: 28px; font-size: 15px; }
+  .card-main { padding: 2px 0; }
+  .weekdays span { padding: 8px 12px; }
+  input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea { padding: 10px; font-size: 16px; }
+  .check input { width: 20px; height: 20px; }
+}
+
+.detail { scroll-margin-top: 110px; }
+.about-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* installed on a phone: keep clear of the notch and the gesture bar */
+#top { padding-top: max(12px, env(safe-area-inset-top)); }
+#timer { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }

@@ -1,0 +1,330 @@
+/* ============================================================================
+   dot — styles
+   The page itself is two things: a background and a circle.
+   Everything below that is the settings UI, which keeps its own dark palette
+   so it stays readable whatever colors you pick for the dot.
+   ============================================================================ */
+
+:root {
+  --bg:   #0d0f12;
+  --dot:  #e9e4da;
+  --onbg: #ffffff;   /* set by app.js: readable against whatever --bg is */
+  --cap:  #6d7076;
+  --cap-size: 13px;
+
+  /* settings UI palette — deliberately independent of the dot colors */
+  --ui-bg:     #16181c;
+  --ui-bg-2:   #1e2126;
+  --ui-line:   #2c3037;
+  --ui-text:   #e6e8ea;
+  --ui-dim:    #8b9199;
+  --ui-accent: #6ea8fe;
+  --ui-danger: #e08585;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  font: 400 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { cursor: default; }
+body.hide-cursor { cursor: none; }
+
+/* --- the dot -------------------------------------------------------------- */
+
+#dot {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--dot);
+  will-change: width, height;
+}
+
+/* --- caption -------------------------------------------------------------- */
+
+#caption {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 9vh;
+  text-align: center;
+  color: var(--cap);
+  font-size: var(--cap-size);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+#countdown:not(:empty) { margin-left: .8em; opacity: .65; }
+
+/* --- three dots ----------------------------------------------------------- */
+
+#menu {
+  position: fixed;
+  z-index: 10;
+  opacity: .32;
+  transition: opacity .5s ease;
+}
+#menu.idle  { opacity: 0; pointer-events: none; }
+#menu.open, #menu:hover { opacity: .9; }
+#menu[hidden] { display: none; }
+
+#menu.pos-bottom-right { right: 18px; bottom: 16px; }
+#menu.pos-bottom-left  { left: 18px;  bottom: 16px; }
+#menu.pos-top-right    { right: 18px; top: 16px; }
+#menu.pos-top-left     { left: 18px;  top: 16px; }
+
+#menu-btn {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 8px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+#menu-btn span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--onbg);   /* black or white, whichever the background needs */
+}
+
+#menu-list {
+  position: absolute;
+  min-width: 176px;
+  padding: 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  background: var(--ui-bg);
+  box-shadow: 0 12px 34px rgba(0,0,0,.5);
+}
+#menu.pos-bottom-right #menu-list,
+#menu.pos-bottom-left  #menu-list { bottom: calc(100% + 6px); }
+#menu.pos-top-right #menu-list,
+#menu.pos-top-left  #menu-list { top: calc(100% + 6px); }
+#menu.pos-bottom-right #menu-list,
+#menu.pos-top-right    #menu-list { right: 0; }
+#menu.pos-bottom-left #menu-list,
+#menu.pos-top-left    #menu-list { left: 0; }
+
+#menu-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+#menu-list button:hover { background: var(--ui-bg-2); }
+#menu-list kbd {
+  color: var(--ui-dim);
+  font: 400 11px/1 ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+/* --- settings modal ------------------------------------------------------- */
+
+#modal { position: fixed; inset: 0; z-index: 20; }
+#modal[hidden] { display: none; }
+
+#modal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+
+#modal-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(86vh, 780px);
+  border: 1px solid var(--ui-line);
+  border-radius: 14px;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  box-shadow: 0 24px 70px rgba(0,0,0,.6);
+  overflow: hidden;
+}
+
+#modal-box header,
+#modal-box footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+}
+#modal-box header { border-bottom: 1px solid var(--ui-line); }
+#modal-box footer { border-top: 1px solid var(--ui-line); }
+#modal-box h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+
+#close {
+  border: 0;
+  background: none;
+  color: var(--ui-dim);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+#close:hover { color: var(--ui-text); }
+
+#done {
+  padding: 7px 16px;
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+#done:hover { border-color: var(--ui-accent); }
+
+#modal-body { padding: 4px 18px 18px; overflow-y: auto; }
+
+section { padding: 16px 0; border-bottom: 1px solid var(--ui-line); }
+section:last-child { border-bottom: 0; padding-bottom: 4px; }
+section h2 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+}
+
+.muted { color: var(--ui-dim); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.hint { margin: -4px 0 12px; color: var(--ui-dim); font-size: 12px; }
+code { font: 400 12px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ui-text); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.field > span:first-child { color: var(--ui-dim); }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input { accent-color: var(--ui-accent); width: 15px; height: 15px; }
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  padding: 7px 9px;
+  border: 1px solid var(--ui-line);
+  border-radius: 7px;
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font: inherit;
+  min-width: 0;
+}
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--ui-accent); outline-offset: -1px; }
+
+input[type="color"] {
+  width: 34px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--ui-line);
+  border-radius: 7px;
+  background: var(--ui-bg-2);
+  cursor: pointer;
+}
+.colorpick { display: flex; gap: 8px; }
+.colorpick .hex { flex: 1; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+.slider .rangewrap { display: flex; align-items: center; gap: 10px; }
+input[type="range"] { flex: 1; accent-color: var(--ui-accent); }
+.slider .num { width: 68px; }
+
+/* phase table */
+#phase-head,
+.phase {
+  display: grid;
+  grid-template-columns: 1.4fr 62px 62px 62px 1fr 76px;
+  gap: 6px;
+  align-items: center;
+}
+#phase-head {
+  margin-bottom: 6px;
+  padding: 0 2px;
+  color: var(--ui-dim);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+#phase-head span:last-child { text-align: right; }
+.phase { margin-bottom: 6px; }
+.phase input, .phase select { padding: 6px 7px; font-size: 13px; }
+.phase .btns { display: flex; justify-content: flex-end; gap: 2px; }
+.phase .btns button {
+  width: 22px;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ui-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.phase .btns button:hover { background: var(--ui-bg-2); color: var(--ui-text); }
+.phase .btns button.del:hover { color: var(--ui-danger); }
+
+#add-phase { margin-top: 4px; }
+
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ghost {
+  padding: 7px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+.ghost:hover { border-color: var(--ui-accent); }
+.ghost.danger:hover { border-color: var(--ui-danger); color: var(--ui-danger); }
+
+#config-text {
+  display: block;
+  width: 100%;
+  height: 220px;
+  margin-top: 10px;
+  font: 400 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  resize: vertical;
+  white-space: pre;
+}
+#config-text[hidden] { display: none; }
+
+@media (max-width: 560px) {
+  .grid2 { grid-template-columns: 1fr; }
+  #phase-head, .phase { grid-template-columns: 1.2fr 52px 52px 52px 1fr 60px; }
+}

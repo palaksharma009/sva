@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>dot</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- the whole point -->
+  <div id="dot"></div>
+
+  <!-- optional text, off by default -->
+  <div id="caption">
+    <span id="label"></span><span id="countdown"></span>
+  </div>
+
+  <!-- three dots -->
+  <div id="menu" class="pos-bottom-right">
+    <button id="menu-btn" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="menu-list" role="menu" hidden>
+      <button type="button" data-act="settings" role="menuitem">Settings<kbd>S</kbd></button>
+      <button type="button" data-act="pause"    role="menuitem">Pause<kbd>Space</kbd></button>
+      <button type="button" data-act="restart"  role="menuitem">Restart<kbd>R</kbd></button>
+      <button type="button" data-act="full"     role="menuitem">Fullscreen<kbd>F</kbd></button>
+    </div>
+  </div>
+
+  <!-- settings -->
+  <div id="modal" hidden>
+    <div id="modal-scrim"></div>
+    <div id="modal-box" role="dialog" aria-modal="true" aria-label="Settings">
+
+      <header>
+        <h1>Settings</h1>
+        <button id="close" type="button" aria-label="Close">&times;</button>
+      </header>
+
+      <div id="modal-body">
+
+        <section>
+          <h2>Colors</h2>
+          <div class="grid2">
+            <label class="field">
+              <span>Background</span>
+              <span class="colorpick">
+                <input type="color" data-bind="colors.background">
+                <input type="text" class="hex" data-bind="colors.background" spellcheck="false" maxlength="7">
+              </span>
+            </label>
+            <label class="field">
+              <span>Dot</span>
+              <span class="colorpick">
+                <input type="color" data-bind="colors.dot">
+                <input type="text" class="hex" data-bind="colors.dot" spellcheck="false" maxlength="7">
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Breath <span id="cycle-total" class="muted"></span></h2>
+          <p class="hint">Sizes are % of the shorter side of your screen. Hold still = same From and To.</p>
+          <div id="phase-head">
+            <span>Step</span><span>Secs</span><span>From</span><span>To</span><span>Easing</span><span></span>
+          </div>
+          <div id="phases"></div>
+          <button id="add-phase" type="button" class="ghost">+ Add step</button>
+        </section>
+
+        <section>
+          <h2>Freeze</h2>
+          <label class="check">
+            <input type="checkbox" data-bind="freeze.enabled">
+            <span>Hold the dot at one fixed size, ignore the sequence</span>
+          </label>
+          <label class="field slider">
+            <span>Frozen size</span>
+            <span class="rangewrap">
+              <input type="range" min="1" max="100" step="1" data-bind="freeze.size">
+              <input type="number" min="1" max="100" step="1" data-bind="freeze.size" class="num">
+            </span>
+          </label>
+        </section>
+
+        <section>
+          <h2>Text on screen</h2>
+          <label class="check">
+            <input type="checkbox" data-bind="labels.show"><span>Show step name</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" data-bind="labels.countdown"><span>Show seconds left</span>
+          </label>
+          <div class="grid2">
+            <label class="field">
+              <span>Text color</span>
+              <span class="colorpick">
+                <input type="color" data-bind="labels.color">
+                <input type="text" class="hex" data-bind="labels.color" spellcheck="false" maxlength="7">
+              </span>
+            </label>
+            <label class="field">
+              <span>Text size (px)</span>
+              <input type="number" min="8" max="80" step="1" data-bind="labels.size" class="num">
+            </label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Menu &amp; misc</h2>
+          <label class="check">
+            <input type="checkbox" data-bind="menu.show"><span>Show the three dots</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" data-bind="menu.autoHide"><span>Fade the dots out when the mouse is still</span>
+          </label>
+          <div class="grid2">
+            <label class="field">
+              <span>Corner</span>
+              <select data-bind="menu.position">
+                <option value="bottom-right">Bottom right</option>
+                <option value="bottom-left">Bottom left</option>
+                <option value="top-right">Top right</option>
+                <option value="top-left">Top left</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Start delay (secs)</span>
+              <input type="number" min="0" max="600" step="1" data-bind="startDelay" class="num">
+            </label>
+          </div>
+          <label class="check">
+            <input type="checkbox" data-bind="keepAwake"><span>Keep the screen awake</span>
+          </label>
+        </section>
+
+        <section>
+          <h2>Config file</h2>
+          <p class="hint">Paste this into <code>config.js</code> to make the current setup the permanent default.</p>
+          <div class="row-btns">
+            <button id="copy-config" type="button" class="ghost">Copy config</button>
+            <button id="show-config" type="button" class="ghost">Show config</button>
+            <button id="reset" type="button" class="ghost danger">Reset to file</button>
+          </div>
+          <textarea id="config-text" spellcheck="false" readonly hidden></textarea>
+        </section>
+
+      </div>
+
+      <footer>
+        <span class="muted">Space pause &middot; R restart &middot; F fullscreen &middot; Esc close</span>
+        <button id="done" type="button">Done</button>
+      </footer>
+
+    </div>
+  </div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

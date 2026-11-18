@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sva</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+  <header id="top">
+    <a class="brand" href="#board"><span class="brand-dot"></span>Sva</a>
+    <nav id="nav" aria-label="Main">
+      <a href="#board" data-route="board">Board</a>
+      <a href="#physical" data-route="physical">Physical</a>
+      <a href="#spiritual" data-route="spiritual">Spiritual</a>
+      <a href="#intellectual" data-route="intellectual">Intellectual</a>
+    </nav>
+    <a class="about-link" href="#about" data-route="about">About</a>
+  </header>
+
+  <main id="view"></main>
+
+  <!-- ======================================================================
+       The About page. Edit the text here freely — it is plain HTML.
+       ====================================================================== -->
+  <template id="about-content">
+    <article class="about">
+      <p class="eyebrow">About</p>
+      <h1>Sva</h1>
+      <p class="lead">A quiet place to look after three parts of yourself: the body, the spirit and the mind.</p>
+
+      <h2>What it is about</h2>
+      <p>Big changes rarely come from big efforts. They come from small things done on ordinary days. Sva helps you decide what matters to you in each area of your life, break it down until it fits into a day, and then simply shows you what today asks of you.</p>
+
+      <h2>How to use it</h2>
+      <ol>
+        <li><strong>Pick an area</strong> at the top: Physical, Spiritual or Intellectual.</li>
+        <li><strong>Set a long-term goal.</strong> Where do you want to be in a year or more?</li>
+        <li><strong>Add short-term goals inside it.</strong> The nearer milestones on the way there.</li>
+        <li><strong>Add tasks to each short-term goal.</strong> The actual things you do. Describe them, put them on the calendar (once or repeating), and switch on a reminder or a timer if the task needs one.</li>
+        <li><strong>Open the Board each day.</strong> It shows what is planned in all three areas. Click a task to see its details, open its timer and practise, then tick it off.</li>
+      </ol>
+      <p>The breathing dot lives on the Spiritual page. Open it any time you want a few calm minutes, or attach it to a task's timer.</p>
+
+      <h2>Good to know</h2>
+      <p>Everything you enter stays in this browser on this computer. Nothing is sent anywhere. Reminders appear while Sva is open in a tab.</p>
+
+      <h2>A wish for you</h2>
+      <p>May you be patient with yourself on the slow days and proud of yourself on the good ones. May your body grow stronger, your mind clearer and your heart lighter, one small step at a time.</p>
+      <p>Be well.</p>
+    </article>
+  </template>
+
+  <!-- long-term / short-term goal editor -->
+  <dialog id="goal-dialog">
+    <form id="goal-form">
+      <h2 id="goal-heading">Goal</h2>
+      <label class="field"><span>Title</span>
+        <input id="g-title" type="text" required maxlength="120" autocomplete="off">
+      </label>
+      <label class="field"><span>Description</span>
+        <textarea id="g-desc" rows="3"></textarea>
+      </label>
+      <label class="field"><span>Target date <em>(optional)</em></span>
+        <input id="g-target" type="date">
+      </label>
+      <div class="dialog-btns">
+        <button type="button" id="g-delete" class="danger">Delete</button>
+        <span class="grow"></span>
+        <button type="button" id="g-cancel" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- task editor -->
+  <dialog id="task-dialog">
+    <form id="task-form">
+      <h2 id="task-heading">Task</h2>
+      <p id="task-path" class="muted"></p>
+
+      <label class="field"><span>Title</span>
+        <input id="t-title" type="text" required maxlength="120" autocomplete="off">
+      </label>
+      <label class="field"><span>Description</span>
+        <textarea id="t-desc" rows="3" placeholder="What exactly do you do, and how?"></textarea>
+      </label>
+
+      <fieldset>
+        <legend><label class="check"><input id="t-sched" type="checkbox"><span>Put it on the calendar</span></label></legend>
+        <div id="sched-fields">
+          <div class="grid2">
+            <label class="field"><span>Starts on</span><input id="t-start" type="date"></label>
+            <label class="field"><span>At <em>(optional)</em></span><input id="t-time" type="time"></label>
+          </div>
+          <div class="grid2">
+            <label class="field"><span>Repeats</span>
+              <select id="t-repeat">
+                <option value="none">Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+            <label class="field" id="interval-field"><span>Every</span>
+              <span class="inline"><input id="t-interval" type="number" min="1" max="99" value="1"><span id="t-unit">day(s)</span></span>
+            </label>
+          </div>
+          <div class="field" id="weekdays-field">
+            <span>On</span>
+            <div id="t-weekdays" class="weekdays">
+              <label><input type="checkbox" value="1"><span>Mon</span></label>
+              <label><input type="checkbox" value="2"><span>Tue</span></label>
+              <label><input type="checkbox" value="3"><span>Wed</span></label>
+              <label><input type="checkbox" value="4"><span>Thu</span></label>
+              <label><input type="checkbox" value="5"><span>Fri</span></label>
+              <label><input type="checkbox" value="6"><span>Sat</span></label>
+              <label><input type="checkbox" value="0"><span>Sun</span></label>
+            </div>
+          </div>
+          <div class="grid2" id="end-fields">
+            <label class="field"><span>Ends</span>
+              <select id="t-end">
+                <option value="never">Never</option>
+                <option value="until">On a date</option>
+                <option value="count">After a number of times</option>
+              </select>
+            </label>
+            <label class="field" id="until-field"><span>Last day</span><input id="t-until" type="date"></label>
+            <label class="field" id="count-field"><span>Times</span><input id="t-count" type="number" min="1" max="999" value="10"></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><label class="check"><input id="t-rem" type="checkbox"><span>Remind me</span></label></legend>
+        <p id="rem-hint" class="hint">Needs a calendar date and a time above.</p>
+        <label class="field" id="rem-fields"><span>How early</span>
+          <select id="t-before">
+            <option value="0">At the start time</option>
+            <option value="5">5 minutes before</option>
+            <option value="10">10 minutes before</option>
+            <option value="15">15 minutes before</option>
+            <option value="30">30 minutes before</option>
+            <option value="60">1 hour before</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend><label class="check"><input id="t-timer" type="checkbox"><span>This task uses a timer</span></label></legend>
+        <div id="timer-fields">
+          <label class="field"><span>Minutes</span><input id="t-minutes" type="number" min="1" max="600" value="15"></label>
+          <label class="check"><input id="t-dot" type="checkbox"><span>Show the breathing dot while the timer runs</span></label>
+        </div>
+      </fieldset>
+
+      <p id="task-error" class="error" hidden></p>
+      <div class="dialog-btns">
+        <button type="button" id="t-delete" class="danger">Delete</button>
+        <span class="grow"></span>
+        <button type="button" id="t-cancel" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- timer / practice screen -->
+  <div id="timer" hidden>
+    <iframe id="timer-dot" title="Breathing dot" hidden></iframe>
+    <div class="timer-top">
+      <div>
+        <span id="timer-cat" class="chip"></span>
+        <h2 id="timer-title"></h2>
+        <p id="timer-sub"></p>
+      </div>
+      <button id="timer-close" type="button" aria-label="Close timer">&times;</button>
+    </div>
+    <div class="timer-bottom">
+      <div id="timer-clock">00:00</div>
+      <div class="timer-controls">
+        <label>Minutes <input id="timer-min" type="number" min="1" max="600"></label>
+        <button id="timer-toggle" type="button" class="primary">Start</button>
+        <button id="timer-reset" type="button" class="ghost">Reset</button>
+        <button id="timer-done" type="button" class="primary" hidden>Mark done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+
+<script src="schedule.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

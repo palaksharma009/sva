@@ -18,8 +18,8 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
   up to each date, today included. Miss a day and the line drops; keep going and
   it climbs back. A task with no date counts on the day you tick it.
 - **Shareerik / Adhyaatmik / Maansik** — where you set things up:
-  long-term goal → short-term goals → tasks. Tap a long-term goal's title (or
-  the arrow beside it) to fold it shut or open it again.
+  long-term goal → short-term goals → tasks. Tap the title of a long-term or
+  short-term goal (or the arrow beside it) to fold it shut or open it again.
 - **A task** can go on the calendar (once, or repeating daily / weekly /
   monthly, every N, until a date or for a number of times), can have a
   reminder, and can have a timer. Tick "Show the breathing dot" and the timer

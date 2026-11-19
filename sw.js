@@ -7,7 +7,7 @@
    here is only used when the network fails.
    ============================================================================ */
 
-const CACHE = 'sva-v4';
+const CACHE = 'sva-v5';
 const FILES = [
   './', 'index.html', 'main.css', 'main.js', 'schedule.js', 'sync.js', 'cloud-config.js',
   'dot.html', 'styles.css', 'app.js', 'config.js',

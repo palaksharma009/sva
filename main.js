@@ -315,14 +315,14 @@
 
   /* --- category page ------------------------------------------------------------ */
 
-  /* Which long-term goals are folded shut. Remembered on this device only. */
+  /* Which long-term and short-term goals are folded shut. Remembered on this device only. */
   const FOLD_KEY = 'sva.folded';
   let folded = new Set();
   try { folded = new Set(JSON.parse(localStorage.getItem(FOLD_KEY)) || []); } catch (e) { /* start with everything open */ }
 
   function toggleFold(goal) {
     if (!folded.delete(goal.id)) folded.add(goal.id);
-    const live = new Set(state.goals.map(g => g.id));
+    const live = new Set(state.goals.flatMap(g => [g.id].concat(g.shorts.map(s => s.id))));
     for (const id of folded) if (!live.has(id)) folded.delete(id);       // forget deleted goals
     try { localStorage.setItem(FOLD_KEY, JSON.stringify([...folded])); } catch (e) { /* just not remembered */ }
     render();
@@ -363,16 +363,25 @@
             : goal.description && h('p', { class: 'goal-desc' }, goal.description)),
         h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'goal', cat, goal }) }, 'Edit')),
 
-      !shut && goal.shorts.map(short => h('section', { class: 'short' },
+      !shut && goal.shorts.map(short => {
+        const sShut = folded.has(short.id);
+        return h('section', { class: 'short' + (sShut ? ' folded' : '') },
         h('div', { class: 'short-head' },
-          h('div', null,
+          h('button', {
+            type: 'button', class: 'fold', 'aria-expanded': sShut ? 'false' : 'true',
+            'aria-label': (sShut ? 'Show ' : 'Hide ') + 'the tasks in ' + short.title,
+            onclick: () => toggleFold(short),
+          }, sShut ? '▸' : '▾'),
+          h('div', { class: 'goal-title', onclick: () => toggleFold(short) },
             h('p', { class: 'level' }, 'Short-term goal'),
             h('h3', null, short.title),
             short.target && h('p', { class: 'target' }, 'Target: ' + Schedule.niceDate(short.target)),
-            short.description && h('p', { class: 'goal-desc' }, short.description)),
+            sShut
+              ? h('p', { class: 'target' }, short.tasks.length + (short.tasks.length === 1 ? ' task' : ' tasks'))
+              : short.description && h('p', { class: 'goal-desc' }, short.description)),
           h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'short', cat, goal, short }) }, 'Edit')),
 
-        short.tasks.length ? h('ul', { class: 'rows' }, short.tasks.map(task => {
+        !sShut && short.tasks.length ? h('ul', { class: 'rows' }, short.tasks.map(task => {
           // unscheduled tasks are ticked here; scheduled ones are ticked per day on the board
           const once = !task.schedule;
           return h('li', { class: 'row-task' + (once && isDone(task, today) ? ' done' : '') },
@@ -383,7 +392,8 @@
               badges(task)));
         })) : null,
 
-        h('button', { type: 'button', class: 'small add', onclick: () => openTaskDialog(goal, short, null) }, '+ Task'))),
+        !sShut && h('button', { type: 'button', class: 'small add', onclick: () => openTaskDialog(goal, short, null) }, '+ Task'));
+      }),
 
       !shut && h('button', { type: 'button', class: 'small add', onclick: () => openGoalDialog({ kind: 'short', cat, goal }) }, '+ Short-term goal'));
     });

@@ -328,6 +328,45 @@
     render();
   }
 
+  /* --- move a long-term goal to another area ---------------------------------------
+     Drag the goal onto Shareerik / Adhyaatmik / Maansik in the bar at the top.
+     (Touch screens: the same move is the "Area" choice in the goal's Edit form.) */
+
+  let dragGoal = null;
+
+  function endDrag() {
+    dragGoal = null;
+    document.body.classList.remove('dragging-goal');
+    for (const n of document.querySelectorAll('#nav a.drop, .goal.dragging')) n.classList.remove('drop', 'dragging');
+  }
+
+  function moveGoal(goal, cat) {
+    if (goal.category === cat.id) return;
+    goal.category = cat.id;
+    save();
+    render();
+    toast({ title: 'Moved to ' + cat.name, body: goal.title, cls: 'cat-' + cat.id, action: { label: 'Open', run: () => { location.hash = cat.id; } } });
+  }
+
+  for (const a of document.querySelectorAll('#nav a[data-route]')) {
+    const cat = CATS.find(c => c.id === a.dataset.route);
+    if (!cat) continue;
+    a.addEventListener('dragover', e => {
+      if (!dragGoal || dragGoal.category === cat.id) return;       // not a goal, or already here
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      a.classList.add('drop');
+    });
+    a.addEventListener('dragleave', () => a.classList.remove('drop'));
+    a.addEventListener('drop', e => {
+      if (!dragGoal) return;
+      e.preventDefault();
+      const goal = dragGoal;
+      endDrag();
+      moveGoal(goal, cat);
+    });
+  }
+
   function renderCategory(cat) {
     const goals = state.goals.filter(g => g.category === cat.id);
     const today = Schedule.today();
@@ -347,7 +386,17 @@
     const list = goals.map(goal => {
       const shut = folded.has(goal.id);
       const nTasks = goal.shorts.reduce((n, s) => n + s.tasks.length, 0);
-      return h('article', { class: 'goal cat-' + cat.id + (shut ? ' folded' : '') },
+      return h('article', {
+        class: 'goal cat-' + cat.id + (shut ? ' folded' : ''), draggable: 'true',
+        ondragstart: e => {
+          dragGoal = goal;
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', goal.title);
+          document.body.classList.add('dragging-goal');
+          e.currentTarget.classList.add('dragging');
+        },
+        ondragend: endDrag,
+      },
       h('div', { class: 'goal-head' },
         h('button', {
           type: 'button', class: 'fold', 'aria-expanded': shut ? 'false' : 'true',
@@ -578,6 +627,8 @@
     $('g-title').value = item ? item.title : '';
     $('g-desc').value = item ? item.description || '' : '';
     $('g-target').value = item ? item.target || '' : '';
+    $('g-cat-field').hidden = ctx.kind !== 'goal';
+    $('g-cat').value = ctx.goal ? ctx.goal.category : ctx.cat.id;
     $('g-delete').hidden = !item;
     $('goal-dialog').showModal();
   }
@@ -588,8 +639,9 @@
     if (!title) return;
     const fields = { title, description: $('g-desc').value.trim(), target: $('g-target').value };
     if (gctx.kind === 'goal') {
+      fields.category = catId($('g-cat').value);
       if (gctx.goal) Object.assign(gctx.goal, fields);
-      else state.goals.push(Object.assign({ id: uid(), category: gctx.cat.id, shorts: [] }, fields));
+      else state.goals.push(Object.assign({ id: uid(), shorts: [] }, fields));
     } else {
       if (gctx.short) Object.assign(gctx.short, fields);
       else gctx.goal.shorts.push(Object.assign({ id: uid(), tasks: [] }, fields));
@@ -617,6 +669,7 @@
   });
 
   $('g-cancel').addEventListener('click', () => $('goal-dialog').close());
+  $('g-cat').replaceChildren(...CATS.map(c => h('option', { value: c.id }, c.name)));
 
   /* --- task dialog ------------------------------------------------------------------ */
 

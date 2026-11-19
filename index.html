@@ -60,7 +60,7 @@
         <li><strong>Pick an area</strong> at the top: Shareerik, Adhyaatmik or Maansik.</li>
         <li><strong>Set a long-term goal.</strong> Where do you want to be in a year or more?</li>
         <li><strong>Add short-term goals inside it.</strong> The nearer milestones on the way there.</li>
-        <li><strong>Add tasks to each short-term goal.</strong> The actual things you do. Describe them, put them on the calendar (once or repeating), and switch on a reminder or a timer if the task needs one.</li>
+        <li><strong>Add tasks to each short-term goal.</strong> The actual things you do. Describe them, put them on the calendar (once or repeating), and switch on a reminder or a timer if the task needs one. A task can be of a different nature than its goal: breathing practice for a running goal is Adhyaatmik work for a Shareerik goal. Set its Nature and it shows up in that column.</li>
         <li><strong>Open the Board each day.</strong> It shows what is planned in all three areas. Click a task to see its details, open its timer and practise, then tick it off.</li>
         <li><strong>Look at Progress now and then.</strong> It draws how much of what you planned you actually did, all three areas together. A missed day pulls the line down; a steady week lifts it again.</li>
       </ol>
@@ -127,6 +127,9 @@
       </label>
       <label class="field"><span>Description</span>
         <textarea id="t-desc" rows="3" placeholder="What exactly do you do, and how?"></textarea>
+      </label>
+      <label class="field"><span>Nature <em>(what kind of activity it is; decides its column on the Board)</em></span>
+        <select id="t-nature"></select>
       </label>
 
       <fieldset>

@@ -1130,3 +1130,8 @@ body.dragging-goal #nav a.active { outline-style: dotted; opacity: 0.6; }   /* a
 .short.dragging { opacity: 0.45; }
 body.dragging-short .goal:not(.drag-home) { outline: 2px dashed var(--accent); outline-offset: 2px; }
 body.dragging-short .goal.drop { outline-style: solid; background: var(--panel-2); }
+
+/* --- a task whose nature differs from its goal's area ---------------------- */
+
+.badge.nature { color: var(--accent); border-color: var(--accent); }
+.goal.guests { border-left-style: dashed; }

@@ -8,6 +8,7 @@
      goals: [{ id, category, title, description, target,
                shorts: [{ id, title, description, target,
                           tasks: [{ id, title, description,
+                                    nature: '' | area id,   ('' = same as its goal)
                                     schedule | null,        (see schedule.js)
                                     reminder: { enabled, before },
                                     timer: { enabled, minutes, dot } }] }] }]
@@ -108,6 +109,11 @@
   function findTask(id) { return entries().find(e => e.task.id === id); }
   function catOf(id) { return CATS.find(c => c.id === id) || CATS[0]; }
 
+  /* A task belongs to its goal, but the kind of activity it is can differ: breathing
+     practice (Adhyaatmik) for a Shareerik goal. Unless set, it is the goal's area. */
+  function natureOf(e) { return CATS.some(c => c.id === e.task.nature) ? e.task.nature : e.goal.category; }
+  function isGuest(e) { return natureOf(e) !== e.goal.category; }
+
   function longDate(s) {
     return Schedule.parse(s).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
   }
@@ -186,13 +192,15 @@
     }, on ? '✓' : '');
   }
 
-  function badges(task) {
+  /* tag: an area to name in front (the task's nature, or the area of the goal it serves) */
+  function badges(task, tag) {
     const out = [];
     const s = task.schedule;
+    if (tag) out.push(h('span', { class: 'badge nature cat-' + tag.id }, tag.name));
     if (s && s.repeat && s.repeat !== 'none') out.push('Repeats');
     if (task.timer && task.timer.enabled) out.push(task.timer.minutes + ' min timer');
     if (task.reminder && task.reminder.enabled) out.push('Reminder');
-    return out.length ? h('div', { class: 'badges' }, out.map(b => h('span', { class: 'badge' }, b))) : null;
+    return out.length ? h('div', { class: 'badges' }, out.map(b => (b.nodeType ? b : h('span', { class: 'badge' }, b)))) : null;
   }
 
   /* --- board ------------------------------------------------------------------ */
@@ -222,7 +230,7 @@
     if (!found) sel = null;
 
     const board = h('div', { class: 'board' + (found ? ' has-detail' : '') },
-      h('div', { class: 'cols' }, CATS.map(c => column(c, list.filter(e => e.goal.category === c.id)))),
+      h('div', { class: 'cols' }, CATS.map(c => column(c, list.filter(e => natureOf(e) === c.id)))),
       found && detail(found, sel.date));
 
     view.replaceChildren(...[head, intro, board].filter(Boolean));
@@ -262,13 +270,13 @@
         },
       },
         h('div', { class: 'card-title' }, t.title),
-        h('div', { class: 'card-meta' }, when + ' · ' + e.short.title),
+        h('div', { class: 'card-meta' }, when + ' · ' + e.short.title + (isGuest(e) ? ' · for a ' + catOf(e.goal.category).name + ' goal' : '')),
         badges(t)));
   }
 
   function detail(e, date) {
     const t = e.task;
-    const cat = catOf(e.goal.category);
+    const cat = catOf(natureOf(e));
     const done = isDone(t, date);
     const rem = t.reminder && t.reminder.enabled
       ? (t.reminder.before ? t.reminder.before + ' min before' : 'At the start time')
@@ -279,7 +287,7 @@
         h('div', null,
           h('span', { class: 'chip' }, cat.name),
           h('h2', null, t.title),
-          h('p', { class: 'path' }, e.goal.title + ' › ' + e.short.title)),
+          h('p', { class: 'path' }, (isGuest(e) ? catOf(e.goal.category).name + ' › ' : '') + e.goal.title + ' › ' + e.short.title)),
         h('button', { type: 'button', class: 'x', 'aria-label': 'Close details', onclick: () => { sel = null; render(); } }, '×')),
       t.description && h('p', { class: 'desc' }, t.description),
       h('dl', null,
@@ -394,7 +402,10 @@
         cat.id === 'adhyaatmik' && h('button', { type: 'button', onclick: openDot }, h('span', { class: 'brand-dot' }), 'Breathing dot'),
         h('button', { type: 'button', class: 'primary', onclick: () => openGoalDialog({ kind: 'goal', cat }) }, '+ Long-term goal')));
 
-    const empty = goals.length ? null : h('div', { class: 'empty' },
+    // tasks of this nature that serve goals in the other areas
+    const guests = entries().filter(e => isGuest(e) && natureOf(e) === cat.id);
+
+    const empty = goals.length || guests.length ? null : h('div', { class: 'empty' },
       h('p', null, 'No ' + cat.name.toLowerCase() + ' goals yet.'),
       h('p', null, 'Start with a long-term goal, add short-term goals inside it, then the tasks for each one.'));
 
@@ -480,7 +491,7 @@
             h('button', { type: 'button', class: 'card-main', onclick: () => openTaskDialog(goal, short, task) },
               h('div', { class: 'card-title' }, task.title),
               h('div', { class: 'card-meta' }, Schedule.describe(task.schedule)),
-              badges(task)));
+              badges(task, isGuest({ goal, task }) && catOf(task.nature))));
         })) : null,
 
         !sShut && h('button', { type: 'button', class: 'small add', onclick: () => openTaskDialog(goal, short, null) }, '+ Task'));
@@ -489,7 +500,23 @@
       !shut && h('button', { type: 'button', class: 'small add', onclick: () => openGoalDialog({ kind: 'short', cat, goal }) }, '+ Short-term goal'));
     });
 
-    view.replaceChildren(...[head, empty, ...list].filter(Boolean));
+    const others = guests.length ? h('article', { class: 'goal guests cat-' + cat.id },
+      h('div', { class: 'goal-head' },
+        h('div', null,
+          h('p', { class: 'level' }, 'From goals in other areas'),
+          h('h2', null, cat.name + ' tasks for other goals'),
+          h('p', { class: 'goal-desc' }, 'These are ' + cat.name + ' in nature but belong to a goal somewhere else. They show in the ' + cat.name + ' column on the Board.'))),
+      h('ul', { class: 'rows' }, guests.map(e => {
+        const once = !e.task.schedule;
+        return h('li', { class: 'row-task' + (once && isDone(e.task, today) ? ' done' : '') },
+          once ? tick(e.task, today) : null,
+          h('button', { type: 'button', class: 'card-main', onclick: () => openTaskDialog(e.goal, e.short, e.task) },
+            h('div', { class: 'card-title' }, e.task.title),
+            h('div', { class: 'card-meta' }, Schedule.describe(e.task.schedule) + ' · ' + e.goal.title + ' › ' + e.short.title),
+            badges(e.task, catOf(e.goal.category))));
+      }))) : null;
+
+    view.replaceChildren(...[head, empty, ...list, others].filter(Boolean));
   }
 
   /* --- progress -----------------------------------------------------------------
@@ -742,6 +769,7 @@
     $('task-path').textContent = goal.title + ' › ' + short.title;
     $('t-title').value = task ? task.title : '';
     $('t-desc').value = task ? task.description || '' : '';
+    $('t-nature').value = task ? natureOf({ goal, task }) : goal.category;
 
     $('t-sched').checked = !!s;
     $('t-start').value = s ? s.start : Schedule.today();
@@ -824,9 +852,11 @@
       };
     }
 
+    const nature = catId($('t-nature').value);
     const fields = {
       title,
       description: $('t-desc').value.trim(),
+      nature: nature === tctx.goal.category ? '' : nature,     // '' keeps following the goal if the goal moves
       schedule,
       reminder: { enabled: $('t-rem').checked && !!(schedule && schedule.time), before: parseInt($('t-before').value, 10) || 0 },
       timer: {
@@ -864,6 +894,7 @@
   });
 
   $('t-cancel').addEventListener('click', () => $('task-dialog').close());
+  $('t-nature').replaceChildren(...CATS.map(c => h('option', { value: c.id }, c.name)));
 
   /* --- timer ------------------------------------------------------------------------- */
 
@@ -897,7 +928,7 @@
   }
 
   function openTimer(e, date) {
-    const cat = catOf(e.goal.category);
+    const cat = catOf(natureOf(e));
     const dot = !!e.task.timer.dot;
     stopTimer();
     T.entry = e;
@@ -1051,7 +1082,7 @@
       changed = true;
       const body = (mins < at ? 'Starts at ' : 'Was due at ') + s.time + ' · ' + e.short.title;
       toast({
-        title: t.title, body, cls: 'cat-' + e.goal.category,
+        title: t.title, body, cls: 'cat-' + natureOf(e),
         action: { label: 'Open', run: () => { boardDate = today; sel = { taskId: t.id, date: today }; location.hash = 'board'; render(); } },
       });
       chime(1);
@@ -1098,6 +1129,7 @@
         tasks: (Array.isArray(s.tasks) ? s.tasks : []).filter(t => t && typeof t === 'object' && str(t.title)).map(t => ({
           id: str(t.id) || uid(),
           title: str(t.title), description: str(t.description),
+          nature: CATS.some(c => c.id === t.nature) ? t.nature : '',
           schedule: t.schedule && typeof t.schedule === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(t.schedule.start) ? t.schedule : null,
           reminder: { enabled: !!(t.reminder && t.reminder.enabled), before: parseInt(t.reminder && t.reminder.before, 10) || 0 },
           timer: {

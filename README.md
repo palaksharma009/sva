@@ -25,6 +25,10 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
   phone). To move a short-term goal, drag it onto another long-term goal on the
   same page, or pick the long-term goal in its Edit form (which also reaches
   goals in the other areas).
+- **A task's nature** can differ from its goal's area: breathing practice
+  (Adhyaatmik) for a running goal (Shareerik). Set **Nature** in the task form.
+  The task stays under its goal, shows in its nature's column on the Board, and
+  is also listed at the bottom of that area's page.
 - **A task** can go on the calendar (once, or repeating daily / weekly /
   monthly, every N, until a date or for a number of times), can have a
   reminder, and can have a timer. Tick "Show the breathing dot" and the timer

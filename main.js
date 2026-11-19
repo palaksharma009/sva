@@ -328,16 +328,31 @@
     render();
   }
 
-  /* --- move a long-term goal to another area ---------------------------------------
-     Drag the goal onto Shareerik / Adhyaatmik / Maansik in the bar at the top.
-     (Touch screens: the same move is the "Area" choice in the goal's Edit form.) */
+  /* --- move things by dragging ------------------------------------------------------
+     A long-term goal: drag it onto Shareerik / Adhyaatmik / Maansik in the top bar.
+     A short-term goal: drag it onto another long-term goal on the same page.
+     (Touch screens, or a goal in another area: the same moves are the "Area" and
+     "Inside" choices in the Edit form.) */
 
   let dragGoal = null;
+  let dragShort = null;          // { short, from } — from is the long-term goal it sits in
 
   function endDrag() {
     dragGoal = null;
-    document.body.classList.remove('dragging-goal');
-    for (const n of document.querySelectorAll('#nav a.drop, .goal.dragging')) n.classList.remove('drop', 'dragging');
+    dragShort = null;
+    document.body.classList.remove('dragging-goal', 'dragging-short');
+    for (const n of document.querySelectorAll('#nav a.drop, .goal.drop, .goal.dragging, .goal.drag-home, .short.dragging')) {
+      n.classList.remove('drop', 'dragging', 'drag-home');
+    }
+  }
+
+  function moveShort(short, from, to) {
+    if (from === to || !to) return;
+    from.shorts = from.shorts.filter(s => s !== short);
+    to.shorts.push(short);
+    save();
+    render();
+    toast({ title: 'Moved into ' + to.title, body: short.title, cls: 'cat-' + to.category });
   }
 
   function moveGoal(goal, cat) {
@@ -396,6 +411,21 @@
           e.currentTarget.classList.add('dragging');
         },
         ondragend: endDrag,
+        // a short-term goal being dragged can be dropped here
+        ondragover: e => {
+          if (!dragShort || dragShort.from === goal) return;
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          e.currentTarget.classList.add('drop');
+        },
+        ondragleave: e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drop'); },
+        ondrop: e => {
+          if (!dragShort) return;
+          e.preventDefault();
+          const d = dragShort;
+          endDrag();
+          moveShort(d.short, d.from, goal);
+        },
       },
       h('div', { class: 'goal-head' },
         h('button', {
@@ -414,7 +444,19 @@
 
       !shut && goal.shorts.map(short => {
         const sShut = folded.has(short.id);
-        return h('section', { class: 'short' + (sShut ? ' folded' : '') },
+        return h('section', {
+          class: 'short' + (sShut ? ' folded' : ''), draggable: 'true',
+          ondragstart: e => {
+            e.stopPropagation();                    // this is the short-term goal moving, not its parent
+            dragShort = { short, from: goal };
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', short.title);
+            document.body.classList.add('dragging-short');
+            e.currentTarget.classList.add('dragging');
+            e.currentTarget.closest('.goal').classList.add('drag-home');
+          },
+          ondragend: e => { e.stopPropagation(); endDrag(); },
+        },
         h('div', { class: 'short-head' },
           h('button', {
             type: 'button', class: 'fold', 'aria-expanded': sShut ? 'false' : 'true',
@@ -629,6 +671,14 @@
     $('g-target').value = item ? item.target || '' : '';
     $('g-cat-field').hidden = ctx.kind !== 'goal';
     $('g-cat').value = ctx.goal ? ctx.goal.category : ctx.cat.id;
+    $('g-parent-field').hidden = ctx.kind !== 'short';
+    if (ctx.kind === 'short') {
+      $('g-parent').replaceChildren(...CATS.map(c => {
+        const inside = state.goals.filter(g => g.category === c.id);
+        return inside.length ? h('optgroup', { label: c.name }, inside.map(g => h('option', { value: g.id }, g.title))) : null;
+      }).filter(Boolean));
+      $('g-parent').value = ctx.goal.id;
+    }
     $('g-delete').hidden = !item;
     $('goal-dialog').showModal();
   }
@@ -643,8 +693,16 @@
       if (gctx.goal) Object.assign(gctx.goal, fields);
       else state.goals.push(Object.assign({ id: uid(), shorts: [] }, fields));
     } else {
-      if (gctx.short) Object.assign(gctx.short, fields);
-      else gctx.goal.shorts.push(Object.assign({ id: uid(), tasks: [] }, fields));
+      const parent = state.goals.find(g => g.id === $('g-parent').value) || gctx.goal;
+      if (gctx.short) {
+        Object.assign(gctx.short, fields);
+        if (parent !== gctx.goal) {
+          gctx.goal.shorts = gctx.goal.shorts.filter(s => s !== gctx.short);
+          parent.shorts.push(gctx.short);
+        }
+      } else {
+        parent.shorts.push(Object.assign({ id: uid(), tasks: [] }, fields));
+      }
     }
     save();
     $('goal-dialog').close();

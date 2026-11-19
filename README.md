@@ -22,7 +22,9 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
   short-term goal (or the arrow beside it) to fold it shut or open it again.
   To move a long-term goal to another area, drag it onto that area's name in
   the top bar, or pick the area in the goal's Edit form (the way to do it on a
-  phone).
+  phone). To move a short-term goal, drag it onto another long-term goal on the
+  same page, or pick the long-term goal in its Edit form (which also reaches
+  goals in the other areas).
 - **A task** can go on the calendar (once, or repeating daily / weekly /
   monthly, every N, until a date or for a number of times), can have a
   reminder, and can have a timer. Tick "Show the breathing dot" and the timer

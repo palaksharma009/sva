@@ -1,6 +1,6 @@
 # Sva
 
-A personal board for three areas — Physical, Spiritual, Intellectual — with a
+A personal board for three areas — Shareerik, Adhyaatmik, Maansik — with a
 breathing dot built in. Plain files, no build step. You sign in, and your data
 follows you to every device.
 
@@ -13,8 +13,13 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
 
 - **Board** — what is on for the chosen day, one column per area. Click a task
   to see its details next to the board; tick it when it's done.
-- **Physical / Spiritual / Intellectual** — where you set things up:
-  long-term goal → short-term goals → tasks.
+- **Progress** — a graph of your consistency over time, all three areas
+  together: how much of what was on the calendar you ticked off, over the 7 days
+  up to each date, today included. Miss a day and the line drops; keep going and
+  it climbs back. A task with no date counts on the day you tick it.
+- **Shareerik / Adhyaatmik / Maansik** — where you set things up:
+  long-term goal → short-term goals → tasks. Tap a long-term goal's title (or
+  the arrow beside it) to fold it shut or open it again.
 - **A task** can go on the calendar (once, or repeating daily / weekly /
   monthly, every N, until a date or for a number of times), can have a
   reminder, and can have a timer. Tick "Show the breathing dot" and the timer
@@ -79,7 +84,7 @@ your computer. About → **Save a backup file** gives you a copy of your own.
 # The breathing dot
 
 Everything below is about the dot on its own: use the "Breathing dot" button on
-the Spiritual page, or open `dot.html` directly.
+the Adhyaatmik page, or open `dot.html` directly.
 
 The About page text is in `index.html`, inside `<template id="about-content">`.
 

@@ -24,10 +24,19 @@
 
   const KEY = 'dot.life.v1';
   const CATS = [
-    { id: 'physical',     name: 'Physical' },
-    { id: 'spiritual',    name: 'Spiritual' },
-    { id: 'intellectual', name: 'Intellectual' },
+    { id: 'shareerik', name: 'Shareerik' },
+    { id: 'adhyaatmik', name: 'Adhyaatmik' },
+    { id: 'maansik', name: 'Maansik' },
   ];
+
+  /* The areas used to be called this. Goals saved under the old names are moved
+     to the new ones wherever data is read: this device, the account, a backup. */
+  const OLD_CATS = { physical: 'shareerik', spiritual: 'adhyaatmik', intellectual: 'maansik' };
+  const hasOldCats = goals => goals.some(g => g && Object.prototype.hasOwnProperty.call(OLD_CATS, g.category));
+  function catId(c) {
+    if (Object.prototype.hasOwnProperty.call(OLD_CATS, c)) return OLD_CATS[c];
+    return CATS.some(x => x.id === c) ? c : 'shareerik';
+  }
 
   const $ = id => document.getElementById(id);
   const view = $('view');
@@ -60,7 +69,13 @@
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && Array.isArray(s.goals)) {
-        return { goals: s.goals, done: s.done || {}, fired: s.fired || {}, updated: s.updated || 0, owner: s.owner || null, dirty: !!s.dirty };
+        const renamed = hasOldCats(s.goals);
+        for (const g of s.goals) if (g) g.category = catId(g.category);
+        // renamed here: stamp it as an edit so the account gets the new names too
+        return {
+          goals: s.goals, done: s.done || {}, fired: s.fired || {},
+          updated: renamed ? Date.now() : s.updated || 0, owner: s.owner || null, dirty: renamed || !!s.dirty,
+        };
       }
     } catch (e) { /* corrupt or blocked storage — start empty */ }
     return blank();
@@ -139,7 +154,7 @@
 
   function route() {
     const r = location.hash.slice(1);
-    return r === 'about' || CATS.some(c => c.id === r) ? r : 'board';
+    return r === 'about' || r === 'progress' || CATS.some(c => c.id === r) ? r : 'board';
   }
 
   function render() {
@@ -147,6 +162,7 @@
     const r = route();
     for (const a of document.querySelectorAll('#top a[data-route]')) a.classList.toggle('active', a.dataset.route === r);
     if (r === 'board') renderBoard();
+    else if (r === 'progress') renderProgress();
     else if (r === 'about') {
       view.replaceChildren($('about-content').content.cloneNode(true));   // text lives in index.html
       const acc = view.querySelector('[data-account]');
@@ -281,8 +297,8 @@
   function addExample() {
     const today = Schedule.today();
     state.goals.push({
-      id: uid(), category: 'spiritual', title: 'A calmer mind', target: '',
-      description: 'Example goal — edit or delete it from the Spiritual page.',
+      id: uid(), category: 'adhyaatmik', title: 'A calmer mind', target: '',
+      description: 'Example goal — edit or delete it from the Adhyaatmik page.',
       shorts: [{
         id: uid(), title: 'Breathe every morning for a month', description: '', target: Schedule.addDays(today, 30),
         tasks: [{
@@ -299,6 +315,19 @@
 
   /* --- category page ------------------------------------------------------------ */
 
+  /* Which long-term goals are folded shut. Remembered on this device only. */
+  const FOLD_KEY = 'sva.folded';
+  let folded = new Set();
+  try { folded = new Set(JSON.parse(localStorage.getItem(FOLD_KEY)) || []); } catch (e) { /* start with everything open */ }
+
+  function toggleFold(goal) {
+    if (!folded.delete(goal.id)) folded.add(goal.id);
+    const live = new Set(state.goals.map(g => g.id));
+    for (const id of folded) if (!live.has(id)) folded.delete(id);       // forget deleted goals
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify([...folded])); } catch (e) { /* just not remembered */ }
+    render();
+  }
+
   function renderCategory(cat) {
     const goals = state.goals.filter(g => g.category === cat.id);
     const today = Schedule.today();
@@ -308,23 +337,33 @@
         h('p', { class: 'eyebrow' }, 'Goals and tasks'),
         h('h1', null, cat.name)),
       h('div', { class: 'head-btns' },
-        cat.id === 'spiritual' && h('button', { type: 'button', onclick: openDot }, h('span', { class: 'brand-dot' }), 'Breathing dot'),
+        cat.id === 'adhyaatmik' && h('button', { type: 'button', onclick: openDot }, h('span', { class: 'brand-dot' }), 'Breathing dot'),
         h('button', { type: 'button', class: 'primary', onclick: () => openGoalDialog({ kind: 'goal', cat }) }, '+ Long-term goal')));
 
     const empty = goals.length ? null : h('div', { class: 'empty' },
       h('p', null, 'No ' + cat.name.toLowerCase() + ' goals yet.'),
       h('p', null, 'Start with a long-term goal, add short-term goals inside it, then the tasks for each one.'));
 
-    const list = goals.map(goal => h('article', { class: 'goal cat-' + cat.id },
+    const list = goals.map(goal => {
+      const shut = folded.has(goal.id);
+      const nTasks = goal.shorts.reduce((n, s) => n + s.tasks.length, 0);
+      return h('article', { class: 'goal cat-' + cat.id + (shut ? ' folded' : '') },
       h('div', { class: 'goal-head' },
-        h('div', null,
+        h('button', {
+          type: 'button', class: 'fold', 'aria-expanded': shut ? 'false' : 'true',
+          'aria-label': (shut ? 'Show ' : 'Hide ') + 'what is inside ' + goal.title,
+          onclick: () => toggleFold(goal),
+        }, shut ? '▸' : '▾'),
+        h('div', { class: 'goal-title', onclick: () => toggleFold(goal) },
           h('p', { class: 'level' }, 'Long-term goal'),
           h('h2', null, goal.title),
           goal.target && h('p', { class: 'target' }, 'Target: ' + Schedule.niceDate(goal.target)),
-          goal.description && h('p', { class: 'goal-desc' }, goal.description)),
+          shut
+            ? h('p', { class: 'target' }, goal.shorts.length + (goal.shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + nTasks + (nTasks === 1 ? ' task' : ' tasks'))
+            : goal.description && h('p', { class: 'goal-desc' }, goal.description)),
         h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'goal', cat, goal }) }, 'Edit')),
 
-      goal.shorts.map(short => h('section', { class: 'short' },
+      !shut && goal.shorts.map(short => h('section', { class: 'short' },
         h('div', { class: 'short-head' },
           h('div', null,
             h('p', { class: 'level' }, 'Short-term goal'),
@@ -346,10 +385,176 @@
 
         h('button', { type: 'button', class: 'small add', onclick: () => openTaskDialog(goal, short, null) }, '+ Task'))),
 
-      h('button', { type: 'button', class: 'small add', onclick: () => openGoalDialog({ kind: 'short', cat, goal }) }, '+ Short-term goal')));
+      !shut && h('button', { type: 'button', class: 'small add', onclick: () => openGoalDialog({ kind: 'short', cat, goal }) }, '+ Short-term goal'));
+    });
 
     view.replaceChildren(...[head, empty, ...list].filter(Boolean));
   }
+
+  /* --- progress -----------------------------------------------------------------
+     Consistency = of the tasks that were on the calendar, how many got ticked.
+     The line shows that share over the 7 days up to each date, all areas together,
+     so one missed day pulls it down and a good week brings it back up.
+     Today is included as it stands, so every tick moves the line straight away.
+     A task with no date cannot be missed; it counts as done on the day it is ticked. */
+
+  let progDays = 30;
+
+  function svg(tag, attrs, ...kids) {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs || {}) if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+    n.append(...kids);
+    return n;
+  }
+
+  function renderProgress() {
+    const today = Schedule.today();
+    const yest = Schedule.addDays(today, -1);
+    const all = entries();
+    const sched = all.filter(e => e.task.schedule);
+    const onceDone = all.filter(e => !e.task.schedule).map(e => state.done[e.task.id + '|once']).filter(d => typeof d === 'string');
+    const cache = {};
+    const stat = d => cache[d] || (cache[d] = sched.reduce((a, e) => {
+      if (Schedule.occursOn(e.task.schedule, d)) {
+        a.planned++;
+        if (state.done[e.task.id + '|' + d]) a.done++;
+      }
+      return a;
+    }, (n => ({ planned: n, done: n }))(onceDone.filter(x => x === d).length)));
+    const rate = (end, n) => {
+      let planned = 0, done = 0;
+      for (let i = 0; i < n; i++) {
+        const s = stat(Schedule.addDays(end, -i));
+        planned += s.planned;
+        done += s.done;
+      }
+      return planned ? done / planned : null;
+    };
+    const pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
+
+    const first = sched.map(e => e.task.schedule.start).concat(onceDone).reduce((m, d) => (!m || d < m ? d : m), '');
+    const hasPast = !!first && first <= today;
+
+    // days in a row with everything ticked; days with nothing planned neither help nor hurt
+    let streak = 0;
+    const t = stat(today);
+    if (t.planned && t.done === t.planned) streak++;
+    for (let d = yest; hasPast && d >= first; d = Schedule.addDays(d, -1)) {
+      const s = stat(d);
+      if (!s.planned) continue;
+      if (s.done < s.planned) break;
+      streak++;
+    }
+
+    const pts = [];
+    if (hasPast) {
+      const span = Schedule.diffDays(first, today) + 1;
+      const from = span > progDays ? Schedule.addDays(today, -(progDays - 1)) : first;
+      for (let d = from; d <= today; d = Schedule.addDays(d, 1)) pts.push({ date: d, v: rate(d, 7), day: stat(d) });
+    }
+
+    const head = h('div', { class: 'page-head' },
+      h('div', null,
+        h('p', { class: 'eyebrow' }, 'All three areas together'),
+        h('h1', null, 'Progress')),
+      h('div', { class: 'datenav' }, [[30, '30 days'], [90, '90 days'], [365, '1 year']].map(r =>
+        h('button', {
+          type: 'button', class: progDays === r[0] ? 'on' : null, 'aria-pressed': progDays === r[0] ? 'true' : 'false',
+          onclick: () => { progDays = r[0]; render(); },
+        }, r[1]))));
+
+    const tile = (value, label) => h('div', { class: 'tile' }, h('b', null, value), h('span', null, label));
+    const tiles = h('div', { class: 'tiles' },
+      tile(pct(rate(today, 7)), 'Last 7 days'),
+      tile(pct(rate(today, 30)), 'Last 30 days'),
+      tile(String(streak), streak === 1 ? 'Perfect day in a row' : 'Perfect days in a row'),
+      tile(t.planned ? t.done + ' of ' + t.planned : '–', 'Done today'));
+
+    const holder = h('div', { class: 'chart' });
+    const box = h('section', { class: 'chart-box' },
+      h('h2', null, 'Consistency'),
+      h('p', { class: 'sub' }, 'How much of what you planned you ticked off, over the 7 days up to each date, today included. Tasks without a date count on the day you tick them.'),
+      pts.length ? holder : h('p', { class: 'col-empty' }, sched.length
+        ? 'Your first task has not started yet. The graph begins on its first day.'
+        : 'Add some tasks and tick them off. Your graph grows from there.'));
+
+    view.replaceChildren(head, tiles, box);
+    if (pts.length) drawChart(holder, pts, pct);
+  }
+
+  function drawChart(holder, pts, pct) {
+    const W = Math.max(280, holder.clientWidth || 640), H = 260;
+    const L = 40, R = 14, T = 12, B = 26;
+    const pw = W - L - R, ph = H - T - B;
+    const n = pts.length;
+    const x = i => L + (n === 1 ? pw / 2 : (i / (n - 1)) * pw);
+    const y = v => T + (1 - v) * ph;
+    const short = d => Schedule.parse(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+
+    const root = svg('svg', {
+      width: W, height: H, role: 'img',
+      'aria-label': 'Consistency over time, ' + short(pts[0].date) + ' to ' + short(pts[n - 1].date) + '. Latest: ' + pct(pts[n - 1].v) + '.'
+    });
+
+    for (const g of [0, 0.25, 0.5, 0.75, 1]) {
+      root.append(svg('line', { x1: L, x2: W - R, y1: y(g), y2: y(g), class: 'grid' }));
+      if (g === 0 || g === 0.5 || g === 1) root.append(svg('text', { x: L - 8, y: y(g) + 4, 'text-anchor': 'end' }, Math.round(g * 100) + '%'));
+    }
+
+    const ticks = [...new Set([0, 1, 2, 3, 4].map(k => Math.round((k * (n - 1)) / 4)))];
+    for (const i of ticks) {
+      root.append(svg('text', { x: x(i), y: H - 6, 'text-anchor': n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }, short(pts[i].date)));
+    }
+
+    // the line breaks where a whole week had nothing planned
+    let path = '', pen = false;
+    pts.forEach((p, i) => {
+      if (p.v == null) { pen = false; return; }
+      path += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1);
+      pen = true;
+      const alone = (i === 0 || pts[i - 1].v == null) && (i === n - 1 || pts[i + 1].v == null);
+      if (alone) root.append(svg('circle', { cx: x(i), cy: y(p.v), r: 3, class: 'pt' }));
+    });
+    if (path) root.append(svg('path', { d: path, class: 'line' }));
+    if (pts[n - 1].v != null) root.append(svg('circle', { cx: x(n - 1), cy: y(pts[n - 1].v), r: 4, class: 'pt ring' }));
+
+    const cross = svg('line', { y1: T, y2: T + ph, class: 'cross', visibility: 'hidden' });
+    const dot = svg('circle', { r: 5, class: 'pt ring', visibility: 'hidden' });
+    const tip = h('div', { class: 'chart-tip', hidden: true });
+    const hit = svg('rect', { x: L - 10, y: T, width: pw + 20, height: ph, fill: 'transparent' });
+    root.append(cross, dot, hit);
+
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; };
+    const show = ev => {
+      const px = ev.clientX - root.getBoundingClientRect().left;
+      const i = n === 1 ? 0 : Math.min(n - 1, Math.max(0, Math.round(((px - L) / pw) * (n - 1))));
+      const p = pts[i];
+      cross.setAttribute('x1', x(i));
+      cross.setAttribute('x2', x(i));
+      cross.setAttribute('visibility', 'visible');
+      if (p.v == null) dot.setAttribute('visibility', 'hidden');
+      else { dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(p.v)); dot.setAttribute('visibility', 'visible'); }
+      tip.replaceChildren(
+        h('b', null, longDate(p.date)),
+        h('span', null, p.v == null ? 'Nothing planned that week' : pct(p.v) + ' over the 7 days to here'),
+        h('span', { class: 'muted' }, p.day.planned ? 'That day: ' + p.day.done + ' of ' + p.day.planned + ' done' : 'That day: nothing planned'));
+      tip.hidden = false;
+      const tw = Math.min(210, W - 16);
+      tip.style.width = tw + 'px';
+      tip.style.left = Math.min(W - tw, Math.max(0, x(i) > W / 2 ? x(i) - tw - 12 : x(i) + 12)) + 'px';
+    };
+    hit.addEventListener('pointermove', show);
+    hit.addEventListener('pointerdown', show);
+    hit.addEventListener('pointerleave', hide);
+
+    holder.replaceChildren(root, tip);
+  }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (route() === 'progress' && !locked()) render(); }, 150);
+  });
 
   /* --- goal dialog (long-term and short-term share it) ---------------------------- */
 
@@ -595,15 +800,15 @@
     $('timer-toggle').focus();
   }
 
-  /* The dot on its own, no task and no countdown (opened from the Spiritual page). */
+  /* The dot on its own, no task and no countdown (opened from the Adhyaatmik page). */
   function openDot() {
     stopTimer();
     T.entry = null;
     T.finished = false;
-    $('timer-cat').textContent = 'Spiritual';
+    $('timer-cat').textContent = 'Adhyaatmik';
     $('timer-title').textContent = 'Breathing dot';
     $('timer-sub').textContent = 'Breathe with it. Its own settings are in the three dots, bottom right.';
-    $('timer').className = 'cat-spiritual with-dot dot-only';
+    $('timer').className = 'cat-adhyaatmik with-dot dot-only';
     $('timer-dot').hidden = false;
     $('timer-dot').src = 'dot.html';
     $('timer').hidden = false;
@@ -764,7 +969,7 @@
     const str = v => (typeof v === 'string' ? v : '');
     return list.filter(g => g && typeof g === 'object' && str(g.title)).map(g => ({
       id: str(g.id) || uid(),
-      category: CATS.some(c => c.id === g.category) ? g.category : 'physical',
+      category: catId(g.category),
       title: str(g.title), description: str(g.description), target: str(g.target),
       shorts: (Array.isArray(g.shorts) ? g.shorts : []).filter(s => s && typeof s === 'object' && str(s.title)).map(s => ({
         id: str(s.id) || uid(),
@@ -882,6 +1087,9 @@
       } else if (!remote || remote.updated < state.updated) {
         state.dirty = true;
       }
+
+      // the account still holds the old area names: write it back with the new ones
+      if (remote && hasOldCats(got.goals) && !state.dirty) { state.updated = Date.now(); state.dirty = true; }
 
       persist();
       if (changed) render();

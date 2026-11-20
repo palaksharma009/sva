@@ -174,6 +174,8 @@
     if (locked()) { view.replaceChildren(); return; }
     const r = route();
     for (const a of document.querySelectorAll('#top a[data-route]')) a.classList.toggle('active', a.dataset.route === r);
+    $('signout').hidden = !signedIn();           // only when there is an account to sign out of
+    if (signedIn()) $('signout').title = 'Signed in as ' + (Cloud.user().email || '');
     syncYarn();
     if (r === 'sankalpa') renderSankalpas();
     else if (r === 'board') renderBoard();
@@ -1688,6 +1690,10 @@
       $('login-error').hidden = false;
     }
     btn.disabled = false;
+  });
+
+  $('signout').addEventListener('click', () => {
+    if (confirm('Sign out? Your data is removed from this device and stays in your account.')) signOut();
   });
 
   async function signOut() {

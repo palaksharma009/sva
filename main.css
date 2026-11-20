@@ -1434,3 +1434,17 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] {
 .sk .bar {
   margin: 2px 0;
 }
+
+/* --- sign out, in the top bar ---------------------------------------------- */
+
+#signout {
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .about-link {
+    margin-left: auto;
+  }
+  #signout {
+    margin-left: 0;
+  }
+}

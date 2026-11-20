@@ -87,7 +87,7 @@
   }
 
   function blank() {
-    return { goals: [], done: {}, fired: {}, sankalpas: [], yarn: { total: 1000, offset: 0 }, updated: 0, owner: null, dirty: false };
+    return { goals: [], done: {}, fired: {}, sankalpas: [], yarn: { total: 1000, offset: 0, lotus: '' }, updated: 0, owner: null, dirty: false };
   }
 
   /* Write to this device only. */
@@ -1213,8 +1213,12 @@
        sankalpas: [{ id, title, description, category, start, days, time,
                      reminder: { enabled, before }, timer: { enabled, minutes, dot },
                      done: { 'YYYY-MM-DD': true } }]
-       yarn: { total, offset }      how many tangles the yarn has, and how many kept
-                                    sankalpas were already spent on an earlier yarn
+       yarn: { total, offset,       how many petals / tangles the picture has, and how many
+               lotus }              kept sankalpas were already spent on an earlier picture;
+                                    lotus is the petal colour you chose ('' = the one in main.css)
+
+     The picture comes in two kinds, switched under it: the lotus (lotus.js, the
+     default) gains a petal for every kept sankalpa; the yarn (yarn.js) loses a tangle.
 
      Nothing about a sankalpa's fate is stored; it is read off its ticks every time:
        upcoming  it has not started yet
@@ -1268,20 +1272,43 @@
   }
 
   let yarnSig = null;
-  // if yarn.js did not load, the mode still works, just without the picture
-  const yarn = typeof Yarn === 'object' ? Yarn : { show() {}, hide() {}, resize() {}, set() {} };
+  // if a picture's file did not load, the mode still works, just without that picture
+  const noPicture = { show() {}, hide() {}, resize() {}, set() {} };
+  const pictures = {
+    lotus: typeof Lotus === 'object' ? Lotus : noPicture,
+    yarn: typeof Yarn === 'object' ? Yarn : noPicture,
+  };
 
-  /* The yarn is on screen for as long as Sankalpa mode is. */
+  // which picture this device shows: the lotus, unless you picked the yarn
+  const VISUAL_KEY = 'sva.visual';
+  let visual = 'lotus';
+  try { if (localStorage.getItem(VISUAL_KEY) === 'yarn') visual = 'yarn'; } catch (e) { /* default picture */ }
+
+  function setVisual(v) {
+    const next = v === 'yarn' ? 'yarn' : 'lotus';
+    if (next === visual) return;
+    pictures[visual].hide();
+    visual = next;
+    yarnSig = null;
+    try { localStorage.setItem(VISUAL_KEY, visual); } catch (e) { /* just not remembered */ }
+    syncYarn();
+  }
+
+  for (const b of document.querySelectorAll('#visual button')) b.addEventListener('click', () => setVisual(b.dataset.visual));
+
+  /* The picture is on screen for as long as Sankalpa mode is. */
   function syncYarn() {
     const on = mode === 'sankalpa' && !locked();
+    const yarn = pictures[visual];
     $('yarn').hidden = !on;
-    if (!on) { yarn.hide(); yarnSig = null; return; }
+    if (!on) { pictures.lotus.hide(); pictures.yarn.hide(); yarnSig = null; return; }
     document.documentElement.style.setProperty('--top-h', $('top').offsetHeight + 'px');
+    for (const b of document.querySelectorAll('#visual button')) b.setAttribute('aria-pressed', b.dataset.visual === visual ? 'true' : 'false');
     yarn.show($('yarn-canvas'));
 
     const y = yarnData();
     const key = y.total + ':' + y.offset;
-    const sig = key + ':' + y.freed.join(',');
+    const sig = visual + ':' + (state.yarn.lotus || '') + ':' + key + ':' + y.freed.join(',');
     if (sig !== yarnSig) {
       // how many of these has this device already watched come loose?
       let seen = y.freed.length;
@@ -1294,16 +1321,26 @@
       // the colours come from the top of main.css
       const cssVar = name => css.getPropertyValue(name).trim();
       for (const c of CATS) colors[c.id] = cssVar('--yarn-' + c.id) || cssVar('--' + c.id) || cssVar('--text');
-      yarn.set({ total: y.total, freed: y.freed, colors, track: cssVar('--yarn-track'), glint: cssVar('--yarn-glint'), animate: y.freed.length - seen });
+      yarn.set({
+        total: y.total, freed: y.freed, colors, animate: y.freed.length - seen,
+        track: cssVar('--yarn-track'), glint: cssVar('--yarn-glint'),
+        lotus: state.yarn.lotus || cssVar('--lotus'), heart: cssVar('--lotus-heart'),
+      });
       yarnSig = sig;
       try { localStorage.setItem(SEEN_KEY, JSON.stringify({ key, count: y.freed.length })); } catch (e) { /* fine */ }
     } else {
       yarn.resize();
     }
     const left = y.total - y.freed.length;
-    $('yarn-count').textContent = left > 0
-      ? y.freed.length + ' of ' + y.total + ' untangled'
-      : 'All ' + y.total + ' untangled. The yarn is free.';
+    if (visual === 'lotus') {
+      $('yarn-count').textContent = left > 0
+        ? y.freed.length + ' of ' + y.total + (y.total === 1 ? ' petal' : ' petals')
+        : 'All ' + y.total + ' petals. The lotus is in full bloom.';
+    } else {
+      $('yarn-count').textContent = left > 0
+        ? y.freed.length + ' of ' + y.total + ' untangled'
+        : 'All ' + y.total + ' untangled. The yarn is free.';
+    }
   }
 
   function setSkDone(s, date, on) {
@@ -1312,7 +1349,7 @@
     else delete s.done[date];
     save();
     if (before !== 'kept' && skStatus(s, Schedule.today()).state === 'kept') {
-      toast({ title: 'Sankalpa kept', body: s.title + ' · ' + s.days + (s.days === 1 ? ' day' : ' days') + '. One tangle has come loose.', cls: 'cat-' + s.category });
+      toast({ title: 'Sankalpa kept', body: s.title + ' · ' + s.days + (s.days === 1 ? ' day' : ' days') + (visual === 'lotus' ? '. A petal has opened.' : '. One tangle has come loose.'), cls: 'cat-' + s.category });
     }
   }
 
@@ -1504,25 +1541,39 @@
 
   /* --- yarn settings */
 
+  const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
+  let lotusPicked = '';          // '' = keep using the colour from main.css
+
+  function lotusDefault() {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--lotus').trim();
+    return isHex(v) ? v : '#f29bb7';
+  }
+
   $('yarn-settings').addEventListener('click', () => {
     const y = yarnData();
     $('y-total').value = y.total;
     $('y-total').min = Math.max(1, y.freed.length);
-    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' untangled so far.';
+    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas kept so far on this picture.';
+    lotusPicked = isHex(state.yarn.lotus) ? state.yarn.lotus : '';
+    $('y-lotus').value = lotusPicked || lotusDefault();
     $('yarn-dialog').showModal();
   });
+
+  $('y-lotus').addEventListener('input', () => { lotusPicked = $('y-lotus').value; });
+  $('y-lotus-reset').addEventListener('click', () => { lotusPicked = ''; $('y-lotus').value = lotusDefault(); });
 
   $('yarn-form').addEventListener('submit', e => {
     e.preventDefault();
     const y = yarnData();
     state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
+    state.yarn.lotus = lotusPicked;
     save();
     $('yarn-dialog').close();
     render();
   });
 
   $('y-again').addEventListener('click', () => {
-    if (!confirm('Start again with a fully tangled yarn? Your sankalpas stay; only the yarn is tangled again.')) return;
+    if (!confirm('Start again from the beginning? Your sankalpas stay; the lotus goes back to no petals and the yarn to fully tangled.')) return;
     state.yarn.offset = keptList().length;
     state.yarn.total = Math.min(2000, Math.max(1, parseInt($('y-total').value, 10) || state.yarn.total));
     save();
@@ -1555,6 +1606,7 @@
     return {
       total: Math.min(2000, Math.max(1, parseInt(y && y.total, 10) || 1000)),
       offset: Math.max(0, parseInt(y && y.offset, 10) || 0),
+      lotus: /^#[0-9a-f]{6}$/i.test(y && y.lotus) ? y.lotus : '',
     };
   }
 

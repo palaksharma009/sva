@@ -14,13 +14,19 @@ area and its colour, and can have a time, a reminder and a timer like a task.
 
 - Tick it each day. **Miss a day and it is broken at once**; "Take it again"
   starts it over from day one.
-- **Keep it to its last day** and one tangle of the yarn comes loose.
-- **The yarn** is on screen the whole time in this mode: a tangled lump of
-  thread in the three area colours, 1000 tangles to begin with. Each kept
-  sankalpa pulls one knot out and lays it down neatly on the coil around the
-  lump. The lump is 3D: it turns slowly by itself, and you can drag it with
-  the mouse or a finger to spin it any way. "Yarn settings" changes the number
-  of tangles or starts a fresh yarn.
+- **Keep it to its last day** and the picture grows by one.
+- **The picture** is on screen the whole time in this mode, and comes in two
+  kinds; the switch under it changes between them, and both show the same
+  progress:
+  - **The lotus** (the usual one) starts with no petals, only its golden
+    heart. Each kept sankalpa opens one more petal, spiralling out from the
+    heart, until it is in full bloom at 1000.
+  - **The yarn** is a tangled lump of thread in the three area colours, 1000
+    tangles to begin with. Each kept sankalpa pulls one knot out and lays it
+    down neatly on the coil around the lump.
+- Both turn slowly by themselves, and you can drag them with the mouse or a
+  finger to spin them. **Settings**, beside the switch, changes the lotus's
+  colour, the number of petals / tangles, or starts the picture again.
 
 ## Run it
 
@@ -105,7 +111,7 @@ your computer. About → **Save a backup file** gives you a copy of your own.
 | `manifest.webmanifest`, `sw.js`, `icon-*.png` | what makes it installable and usable offline |
 | `index.html`, `main.css`, `main.js` | the app |
 | `cloud-config.js`, `sync.js` | which Firebase project to use, and the login + sync |
-| `yarn.js`, `anime.min.js` | the yarn picture in Sankalpa mode, and the animation library it uses ([anime.js](https://animejs.com), MIT) |
+| `lotus.js`, `yarn.js`, `anime.min.js` | the lotus and yarn pictures in Sankalpa mode, and the animation library it uses ([anime.js](https://animejs.com), MIT) |
 | `schedule.js` | the repeat rules ("does this task fall on this day?") |
 | `dot.html`, `styles.css`, `app.js`, `config.js` | the breathing dot, unchanged |
 

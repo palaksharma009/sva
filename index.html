@@ -48,11 +48,15 @@
   </div>
 
   <!-- Sankalpa mode: the yarn stays on screen the whole time (drawn by yarn.js) -->
-  <section id="yarn" aria-label="The yarn" hidden>
+  <section id="yarn" aria-label="Your progress, as a picture" hidden>
     <div id="yarn-canvas"></div>
     <div class="yarn-foot">
+      <div id="visual" role="group" aria-label="Picture">
+        <button type="button" data-visual="lotus" aria-pressed="true">Lotus</button>
+        <button type="button" data-visual="yarn" aria-pressed="false">Yarn</button>
+      </div>
       <p id="yarn-count" aria-live="polite"></p>
-      <button id="yarn-settings" type="button" class="small ghost">Yarn settings</button>
+      <button id="yarn-settings" type="button" class="small ghost">Settings</button>
     </div>
   </section>
 
@@ -83,7 +87,8 @@
 
       <h2>Sankalpa mode</h2>
       <p>The switch at the top turns Sva into something simpler. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days. No long-term or short-term goals here, only the vow and its days.</p>
-      <p>Tick it each day. Miss a day and that sankalpa is broken at once; you can take it again from day one. Keep it to its last day and one tangle of the yarn comes loose and is laid down neatly around it, in the colour of its area. The yarn starts with 1000 tangles. Untangle them all, then start again if you like.</p>
+      <p>Tick it each day. Miss a day and that sankalpa is broken at once; you can take it again from day one. Keep it to its last day and the lotus opens one more petal. It starts with none and is in full bloom at a thousand; then you can start again if you like.</p>
+      <p>Under the picture you can switch from the lotus to the yarn: a tangled lump of thread that loses one tangle for every sankalpa you keep. Both show the same progress. Settings, beside the switch, changes the lotus's colour and how many petals it takes.</p>
 
       <h2>Good to know</h2>
       <p>Your goals are kept in your own account, behind your email and password, so they are the same on your phone, your computer and anywhere else you sign in. Nobody else can open them. Reminders appear while Sva is open.</p>
@@ -191,13 +196,19 @@
   <!-- yarn settings -->
   <dialog id="yarn-dialog">
     <form id="yarn-form">
-      <h2>The yarn</h2>
+      <h2>The picture</h2>
       <p id="y-now" class="muted"></p>
-      <label class="field"><span>How many tangles it has <em>(one comes loose for every sankalpa you keep)</em></span>
+      <label class="field"><span>How many petals the lotus has, and tangles the yarn <em>(one for every sankalpa you keep)</em></span>
         <input id="y-total" type="number" min="1" max="2000" required>
       </label>
+      <div class="field"><span>Colour of the lotus</span>
+        <span class="inline">
+          <input id="y-lotus" type="color" aria-label="Colour of the lotus">
+          <button type="button" id="y-lotus-reset" class="small ghost">Use the usual colour</button>
+        </span>
+      </div>
       <div class="dialog-btns">
-        <button type="button" id="y-again" class="danger">Start again, fully tangled</button>
+        <button type="button" id="y-again" class="danger">Start again from the beginning</button>
         <span class="grow"></span>
         <button type="button" id="y-cancel" class="ghost">Cancel</button>
         <button type="submit" class="primary">Save</button>
@@ -328,6 +339,7 @@
 <script src="schedule.js"></script>
 <script src="anime.min.js"></script>
 <script src="yarn.js"></script>
+<script src="lotus.js"></script>
 <script src="cloud-config.js"></script>
 <script src="sync.js"></script>
 <script src="main.js"></script>

@@ -53,6 +53,13 @@
     0.85
   ); /* the bright dot running along the untangled thread */
 
+  /* --- the lotus (Sankalpa mode) -----------------------------------------
+     The petal colour here is the usual one. You can also pick a colour in the
+     app (Settings, under the picture); that choice wins over this line and
+     follows you to your other devices. Write it as #rrggbb. */
+  --lotus: #f29bb7; /* lotus petals */
+  --lotus-heart: #f2c94c; /* the golden heart in the middle of the lotus */
+
   /* --- see-through layers ------------------------------------------------ */
   --backdrop: rgba(0, 0, 0, 0.6); /* dims the page behind an open dialog */
   --veil: rgba(
@@ -1447,4 +1454,39 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] {
   #signout {
     margin-left: 0;
   }
+}
+
+/* --- lotus / yarn switch, and the lotus colour ------------------------------ */
+
+#visual {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+#visual button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 3px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+#visual button:hover {
+  color: var(--text);
+}
+#visual button[aria-pressed="true"] {
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 600;
+}
+input[type="color"] {
+  width: 56px;
+  height: 36px;
+  padding: 2px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
 }

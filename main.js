@@ -4,6 +4,9 @@
    filled in, you sign in first and the same data is kept in your account
    (sync.js), so it follows you to every device.
 
+   Two modes share this file: the goals board, and Sankalpa mode (search for
+   "Sankalpa mode" below; its picture is drawn by yarn.js).
+
    Data shape:
      goals: [{ id, category, title, description, target,
                shorts: [{ id, title, description, target,
@@ -75,6 +78,7 @@
         // renamed here: stamp it as an edit so the account gets the new names too
         return {
           goals: s.goals, done: s.done || {}, fired: s.fired || {},
+          sankalpas: cleanSankalpas(s.sankalpas), yarn: cleanYarn(s.yarn),
           updated: renamed ? Date.now() : s.updated || 0, owner: s.owner || null, dirty: renamed || !!s.dirty,
         };
       }
@@ -82,7 +86,9 @@
     return blank();
   }
 
-  function blank() { return { goals: [], done: {}, fired: {}, updated: 0, owner: null, dirty: false }; }
+  function blank() {
+    return { goals: [], done: {}, fired: {}, sankalpas: [], yarn: { total: 1000, offset: 0 }, updated: 0, owner: null, dirty: false };
+  }
 
   /* Write to this device only. */
   function persist() {
@@ -160,6 +166,7 @@
 
   function route() {
     const r = location.hash.slice(1);
+    if (mode === 'sankalpa') return r === 'about' ? 'about' : 'sankalpa';
     return r === 'about' || r === 'progress' || CATS.some(c => c.id === r) ? r : 'board';
   }
 
@@ -167,7 +174,9 @@
     if (locked()) { view.replaceChildren(); return; }
     const r = route();
     for (const a of document.querySelectorAll('#top a[data-route]')) a.classList.toggle('active', a.dataset.route === r);
-    if (r === 'board') renderBoard();
+    syncYarn();
+    if (r === 'sankalpa') renderSankalpas();
+    else if (r === 'board') renderBoard();
     else if (r === 'progress') renderProgress();
     else if (r === 'about') {
       view.replaceChildren($('about-content').content.cloneNode(true));   // text lives in index.html
@@ -681,7 +690,11 @@
   let resizeTimer = null;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (route() === 'progress' && !locked()) render(); }, 150);
+    resizeTimer = setTimeout(() => {
+      if (locked()) return;
+      if (mode === 'sankalpa') syncYarn();
+      else if (route() === 'progress') render();
+    }, 150);
   });
 
   /* --- goal dialog (long-term and short-term share it) ---------------------------- */
@@ -1035,7 +1048,8 @@
   });
 
   $('timer-done').addEventListener('click', () => {
-    if (T.entry) setDone(T.entry.task, T.date, true);
+    if (T.entry && T.entry.sankalpa) setSkDone(T.entry.sankalpa, T.date, true);
+    else if (T.entry) setDone(T.entry.task, T.date, true);
     closeTimer();
   });
 
@@ -1088,6 +1102,23 @@
       chime(1);
       notify(t.title, body);
     }
+    for (const s of state.sankalpas) {
+      if (!s.time || !s.reminder.enabled) continue;
+      const st = skStatus(s, today);
+      const key = s.id + '|' + today;
+      if (st.state !== 'active' || st.doneToday || state.fired[key]) continue;
+      const p = s.time.split(':').map(Number);
+      const at = p[0] * 60 + p[1];
+      if (mins < at - (s.reminder.before || 0) || mins > at + 30) continue;
+
+      state.fired[key] = true;
+      changed = true;
+      const body = (mins < at ? 'Starts at ' : 'Was due at ') + s.time + ' · sankalpa, day ' + st.day + ' of ' + s.days;
+      toast({ title: s.title, body, cls: 'cat-' + s.category, action: { label: 'Open', run: () => setMode('sankalpa') } });
+      chime(1);
+      notify(s.title, body);
+    }
+
     if (changed) persist();
   }
 
@@ -1107,7 +1138,7 @@
   /* --- backup: move your data between devices -------------------------------------- */
 
   function exportData() {
-    const data = { app: 'sva', version: 1, saved: new Date().toISOString(), goals: state.goals, done: state.done };
+    const data = { app: 'sva', version: 1, saved: new Date().toISOString(), goals: state.goals, done: state.done, sankalpas: state.sankalpas, yarn: state.yarn };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const a = h('a', { href: url, download: 'sva-backup-' + Schedule.today() + '.json' });
     document.body.append(a);
@@ -1156,9 +1187,9 @@
       toast({ title: 'Could not load that file', body: 'It is not a Sva backup.' });
       return;
     }
-    if (state.goals.length && !confirm('Replace everything in Sva with the backup?')) return;
+    if ((state.goals.length || state.sankalpas.length) && !confirm('Replace everything in Sva with the backup?')) return;
     const goals = cleanGoals(data.goals);
-    state = Object.assign(blank(), { goals, done: cleanDone(data.done), owner: state.owner });
+    state = Object.assign(blank(), { goals, done: cleanDone(data.done), sankalpas: cleanSankalpas(data.sankalpas), yarn: cleanYarn(data.yarn), owner: state.owner });
     sel = null;
     save();
     render();
@@ -1172,6 +1203,358 @@
     else if (b.dataset.act === 'import') $('import-file').click();
     else if (b.dataset.act === 'signout') signOut();
   });
+
+  /* --- Sankalpa mode -----------------------------------------------------------------
+     The other way to run Sva. No long-term / short-term goals here: a sankalpa is one
+     thing you resolve to do every day, for a set number of days.
+
+       sankalpas: [{ id, title, description, category, start, days, time,
+                     reminder: { enabled, before }, timer: { enabled, minutes, dot },
+                     done: { 'YYYY-MM-DD': true } }]
+       yarn: { total, offset }      how many tangles the yarn has, and how many kept
+                                    sankalpas were already spent on an earlier yarn
+
+     Nothing about a sankalpa's fate is stored; it is read off its ticks every time:
+       upcoming  it has not started yet
+       active    every day so far is ticked (today may still be open)
+       broken    a day went by without a tick; it ended there, at once
+       kept      every day to the last is ticked; one tangle of the yarn comes loose */
+
+  const MODE_KEY = 'sva.mode';
+  const SEEN_KEY = 'sva.yarnSeen';
+  let mode = 'sankalpa';         // what Sva opens in, until you pick the other on this device
+  try { if (localStorage.getItem(MODE_KEY) === 'goals') mode = 'goals'; } catch (e) { /* default mode */ }
+
+  function setMode(m) {
+    mode = m === 'sankalpa' ? 'sankalpa' : 'goals';
+    try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* just not remembered */ }
+    location.hash = mode === 'sankalpa' ? 'sankalpa' : 'board';
+    applyMode();
+    render();
+  }
+
+  function applyMode() {
+    document.body.classList.toggle('mode-sankalpa', mode === 'sankalpa');
+    for (const b of document.querySelectorAll('#mode button')) b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false');
+  }
+
+  for (const b of document.querySelectorAll('#mode button')) b.addEventListener('click', () => setMode(b.dataset.mode));
+
+  function skStatus(s, today) {
+    const end = Schedule.addDays(s.start, s.days - 1);
+    if (today < s.start) return { state: 'upcoming', end };
+    const last = today <= end ? Schedule.addDays(today, -1) : end;        // the last day that is over
+    for (let d = s.start; d <= last; d = Schedule.addDays(d, 1)) {
+      if (!s.done[d]) return { state: 'broken', on: d, day: Schedule.diffDays(s.start, d) + 1, end };
+    }
+    if (today > end || s.done[end]) return { state: 'kept', on: end, end };
+    return { state: 'active', day: Schedule.diffDays(s.start, today) + 1, doneToday: !!s.done[today], end };
+  }
+
+  /* Kept sankalpas, oldest first: this order decides which tangle each one freed. */
+  function keptList() {
+    const today = Schedule.today();
+    return state.sankalpas.map(s => ({ s, st: skStatus(s, today) })).filter(r => r.st.state === 'kept')
+      .sort((a, b) => (a.st.on === b.st.on ? (a.s.id < b.s.id ? -1 : 1) : a.st.on < b.st.on ? -1 : 1));
+  }
+
+  function yarnData() {
+    const kept = keptList();
+    const total = Math.min(2000, Math.max(1, parseInt(state.yarn.total, 10) || 1000));
+    const offset = Math.min(kept.length, Math.max(0, parseInt(state.yarn.offset, 10) || 0));
+    return { total, offset, kept, freed: kept.slice(offset, offset + total).map(r => r.s.category) };
+  }
+
+  let yarnSig = null;
+  // if yarn.js did not load, the mode still works, just without the picture
+  const yarn = typeof Yarn === 'object' ? Yarn : { show() {}, hide() {}, resize() {}, set() {} };
+
+  /* The yarn is on screen for as long as Sankalpa mode is. */
+  function syncYarn() {
+    const on = mode === 'sankalpa' && !locked();
+    $('yarn').hidden = !on;
+    if (!on) { yarn.hide(); yarnSig = null; return; }
+    document.documentElement.style.setProperty('--top-h', $('top').offsetHeight + 'px');
+    yarn.show($('yarn-canvas'));
+
+    const y = yarnData();
+    const key = y.total + ':' + y.offset;
+    const sig = key + ':' + y.freed.join(',');
+    if (sig !== yarnSig) {
+      // how many of these has this device already watched come loose?
+      let seen = y.freed.length;
+      try {
+        const m = JSON.parse(localStorage.getItem(SEEN_KEY));
+        if (m && m.key === key && m.count < seen) seen = m.count;
+      } catch (e) { /* treat all as seen */ }
+      const colors = {};
+      const css = getComputedStyle(document.documentElement);
+      // the colours come from the top of main.css
+      const cssVar = name => css.getPropertyValue(name).trim();
+      for (const c of CATS) colors[c.id] = cssVar('--yarn-' + c.id) || cssVar('--' + c.id) || cssVar('--text');
+      yarn.set({ total: y.total, freed: y.freed, colors, track: cssVar('--yarn-track'), glint: cssVar('--yarn-glint'), animate: y.freed.length - seen });
+      yarnSig = sig;
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify({ key, count: y.freed.length })); } catch (e) { /* fine */ }
+    } else {
+      yarn.resize();
+    }
+    const left = y.total - y.freed.length;
+    $('yarn-count').textContent = left > 0
+      ? y.freed.length + ' of ' + y.total + ' untangled'
+      : 'All ' + y.total + ' untangled. The yarn is free.';
+  }
+
+  function setSkDone(s, date, on) {
+    const before = skStatus(s, Schedule.today()).state;
+    if (on) s.done[date] = true;
+    else delete s.done[date];
+    save();
+    if (before !== 'kept' && skStatus(s, Schedule.today()).state === 'kept') {
+      toast({ title: 'Sankalpa kept', body: s.title + ' · ' + s.days + (s.days === 1 ? ' day' : ' days') + '. One tangle has come loose.', cls: 'cat-' + s.category });
+    }
+  }
+
+  function skTimer(s, st) {
+    openTimer({
+      sankalpa: s, goal: { category: s.category },
+      short: { title: 'Day ' + st.day + ' of ' + s.days },
+      task: { title: s.title, timer: s.timer },
+    }, Schedule.today());
+  }
+
+  /* One mark per day: filled = done, ringed = today. Long sankalpas get a bar instead. */
+  function skDays(s, st, today) {
+    const count = Object.keys(s.done).length;
+    if (s.days > 60) return h('div', { class: 'bar' }, h('i', { style: 'width:' + Math.round((count / s.days) * 100) + '%' }));
+    const pips = [];
+    for (let n = 0; n < s.days; n++) {
+      const d = Schedule.addDays(s.start, n);
+      pips.push(h('i', { class: 'pip' + (s.done[d] ? ' on' : '') + (d === today && st.state === 'active' ? ' now' : '') + (st.state === 'broken' && d === st.on ? ' miss' : '') }));
+    }
+    return h('div', { class: 'pips', 'aria-label': count + ' of ' + s.days + ' days done' }, pips);
+  }
+
+  function skCard(r, today) {
+    const s = r.s, st = r.st;
+    const dayWord = s.days + (s.days === 1 ? ' day' : ' days');
+    let mark, meta;
+    if (st.state === 'active') {
+      mark = h('button', {
+        type: 'button', class: 'tick' + (st.doneToday ? ' on' : ''), 'aria-pressed': st.doneToday ? 'true' : 'false',
+        'aria-label': (st.doneToday ? 'Mark not done today: ' : 'Mark done today: ') + s.title,
+        onclick: () => { setSkDone(s, today, !st.doneToday); render(); },
+      }, st.doneToday ? '✓' : '');
+      meta = 'Day ' + st.day + ' of ' + s.days + (s.time ? ' · ' + s.time : '') + ' · until ' + Schedule.niceDate(st.end);
+    } else if (st.state === 'kept') {
+      mark = h('span', { class: 'tick on still', 'aria-hidden': 'true' }, '✓');
+      meta = 'Kept for ' + dayWord + ' · finished ' + Schedule.niceDate(st.on);
+    } else if (st.state === 'broken') {
+      mark = h('span', { class: 'tick still broken', 'aria-hidden': 'true' }, '×');
+      meta = 'Broken on day ' + st.day + ' of ' + s.days + ' · ' + Schedule.niceDate(st.on);
+    } else {
+      mark = h('span', { class: 'tick still', 'aria-hidden': 'true' });
+      meta = 'Starts ' + Schedule.niceDate(s.start) + ' · ' + dayWord + (s.time ? ' · ' + s.time : '');
+    }
+    const tags = [];
+    if (s.timer.enabled) tags.push(s.timer.minutes + ' min timer');
+    if (s.reminder.enabled) tags.push('Reminder');
+
+    return h('li', { class: 'sk cat-' + s.category + ' is-' + st.state + (st.doneToday ? ' done' : '') },
+      mark,
+      h('div', { class: 'sk-main' },
+        h('div', { class: 'sk-top' },
+          h('span', { class: 'chip' }, catOf(s.category).name),
+          h('div', { class: 'card-title' }, s.title)),
+        h('div', { class: 'card-meta' }, meta),
+        s.description && st.state === 'active' ? h('p', { class: 'goal-desc' }, s.description) : null,
+        st.state === 'upcoming' ? null : skDays(s, st, today),
+        tags.length && st.state !== 'kept' && st.state !== 'broken' ? h('div', { class: 'badges' }, tags.map(t => h('span', { class: 'badge' }, t))) : null,
+        h('div', { class: 'sk-btns' },
+          st.state === 'active' && s.timer.enabled && h('button', { type: 'button', class: 'small primary', onclick: () => skTimer(s, st) }, 'Open timer'),
+          (st.state === 'kept' || st.state === 'broken') && h('button', { type: 'button', class: 'small', onclick: () => openSkDialog(null, s) }, 'Take it again'),
+          h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
+  }
+
+  function renderSankalpas() {
+    const today = Schedule.today();
+    const rows = state.sankalpas.map(s => ({ s, st: skStatus(s, today) }));
+    const of = k => rows.filter(r => r.st.state === k);
+    const active = of('active').sort((a, b) => (a.s.time || '99:99').localeCompare(b.s.time || '99:99'));
+    const upcoming = of('upcoming').sort((a, b) => a.s.start.localeCompare(b.s.start));
+    const kept = of('kept').sort((a, b) => b.st.on.localeCompare(a.st.on));
+    const broken = of('broken').sort((a, b) => b.st.on.localeCompare(a.st.on));
+    const left = active.filter(r => !r.st.doneToday).length;
+
+    const head = h('div', { class: 'page-head' },
+      h('div', null,
+        h('p', { class: 'eyebrow' }, active.length ? (left ? left + ' still to do today' : 'All done for today') : 'Sankalpa mode'),
+        h('h1', null, 'Sankalpas')),
+      h('div', { class: 'head-btns' },
+        h('button', { type: 'button', class: 'primary', onclick: () => openSkDialog(null) }, '+ Sankalpa')));
+
+    const tile = (value, label) => h('div', { class: 'tile' }, h('b', null, String(value)), h('span', null, label));
+    const tiles = h('div', { class: 'tiles three' }, tile(active.length, 'Running'), tile(kept.length, 'Kept'), tile(broken.length, 'Broken'));
+
+    const empty = rows.length ? null : h('div', { class: 'empty' },
+      h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
+      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; you can always take it again.'));
+
+    const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
+      h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),
+      h('ul', { class: 'sks' }, list.map(r => skCard(r, today)))) : null);
+
+    view.replaceChildren(...[head, tiles, empty,
+      block('Today', active), block('Not started yet', upcoming), block('Broken', broken), block('Kept', kept)].filter(Boolean));
+  }
+
+  /* --- sankalpa form */
+
+  let kctx = null;          // the sankalpa being edited, or null for a new one
+
+  function openSkDialog(s, template) {
+    kctx = s;
+    const src = s || template;
+    const today = Schedule.today();
+    const begun = !!s && today >= s.start;
+    $('sk-heading').textContent = s ? 'Edit sankalpa' : template ? 'Take it again' : 'New sankalpa';
+    $('k-title').value = src ? src.title : '';
+    $('k-desc').value = src ? src.description || '' : '';
+    $('k-cat').value = src ? src.category : CATS[0].id;
+    $('k-start').value = s ? s.start : today;
+    $('k-days').value = src ? src.days : 14;
+    $('k-start').disabled = $('k-days').disabled = begun;      // a vow that has begun does not get easier
+    $('k-locked').hidden = !begun;
+    $('k-time').value = src ? src.time || '' : '';
+    $('k-rem').checked = !!(src && src.reminder.enabled);
+    $('k-before').value = String(src ? src.reminder.before || 0 : 10);
+    $('k-timer').checked = !!(src && src.timer.enabled);
+    $('k-minutes').value = src ? src.timer.minutes || 15 : 15;
+    $('k-dot').checked = !!(src && src.timer.dot);
+    $('k-delete').hidden = !s;
+    $('k-error').hidden = true;
+    syncSkForm();
+    $('sk-dialog').showModal();
+  }
+
+  function syncSkForm() {
+    const canRemind = !!$('k-time').value;
+    $('k-rem').disabled = !canRemind;
+    if (!canRemind) $('k-rem').checked = false;
+    $('k-rem-hint').hidden = canRemind;
+    $('k-rem-fields').hidden = !$('k-rem').checked;
+    $('k-timer-fields').hidden = !$('k-timer').checked;
+  }
+
+  $('sk-form').addEventListener('input', syncSkForm);
+  $('sk-form').addEventListener('change', syncSkForm);
+
+  $('sk-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const fail = msg => { $('k-error').textContent = msg; $('k-error').hidden = false; };
+    const title = $('k-title').value.trim();
+    if (!title) return;
+    const today = Schedule.today();
+    const begun = !!kctx && today >= kctx.start;
+    const start = begun ? kctx.start : $('k-start').value;
+    const days = begun ? kctx.days : parseInt($('k-days').value, 10);
+    if (!start) return fail('Pick the day it starts.');
+    if (!begun && start < today) return fail('A sankalpa starts today or later.');
+    if (!(days >= 1 && days <= 3650)) return fail('Say for how many days: a number from 1 to 3650.');
+    const time = $('k-time').value;
+    const fields = {
+      title, description: $('k-desc').value.trim(), category: catId($('k-cat').value), start, days, time,
+      reminder: { enabled: $('k-rem').checked && !!time, before: parseInt($('k-before').value, 10) || 0 },
+      timer: {
+        enabled: $('k-timer').checked,
+        minutes: Math.min(600, Math.max(1, parseInt($('k-minutes').value, 10) || 15)),
+        dot: $('k-dot').checked,
+      },
+    };
+    if (kctx) {
+      Object.assign(kctx, fields);
+      for (const k of Object.keys(state.fired)) if (k.split('|')[0] === kctx.id) delete state.fired[k];
+    } else {
+      state.sankalpas.push(Object.assign({ id: uid(), done: {} }, fields));
+    }
+    if (fields.reminder.enabled && 'Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (err) { /* in-page reminders still work */ }
+    }
+    save();
+    $('sk-dialog').close();
+    render();
+  });
+
+  $('k-delete').addEventListener('click', () => {
+    const at = keptList().findIndex(r => r.s === kctx);
+    const msg = at >= 0
+      ? 'Delete "' + kctx.title + '"? It was kept, so its tangle goes back into the yarn.'
+      : 'Delete "' + kctx.title + '"?';
+    if (!confirm(msg)) return;
+    if (at >= 0 && at < state.yarn.offset) state.yarn.offset--;      // it belonged to an earlier yarn
+    state.sankalpas = state.sankalpas.filter(s => s !== kctx);
+    save();
+    $('sk-dialog').close();
+    render();
+  });
+
+  $('k-cancel').addEventListener('click', () => $('sk-dialog').close());
+  $('k-cat').replaceChildren(...CATS.map(c => h('option', { value: c.id }, c.name)));
+
+  /* --- yarn settings */
+
+  $('yarn-settings').addEventListener('click', () => {
+    const y = yarnData();
+    $('y-total').value = y.total;
+    $('y-total').min = Math.max(1, y.freed.length);
+    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' untangled so far.';
+    $('yarn-dialog').showModal();
+  });
+
+  $('yarn-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const y = yarnData();
+    state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
+    save();
+    $('yarn-dialog').close();
+    render();
+  });
+
+  $('y-again').addEventListener('click', () => {
+    if (!confirm('Start again with a fully tangled yarn? Your sankalpas stay; only the yarn is tangled again.')) return;
+    state.yarn.offset = keptList().length;
+    state.yarn.total = Math.min(2000, Math.max(1, parseInt($('y-total').value, 10) || state.yarn.total));
+    save();
+    $('yarn-dialog').close();
+    render();
+  });
+
+  $('y-cancel').addEventListener('click', () => $('yarn-dialog').close());
+
+  function cleanSankalpas(list) {
+    const str = v => (typeof v === 'string' ? v : '');
+    const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    return (Array.isArray(list) ? list : []).filter(s => s && typeof s === 'object' && str(s.title) && isDate(s.start)).map(s => ({
+      id: str(s.id) || uid(),
+      title: str(s.title), description: str(s.description), category: catId(s.category),
+      start: s.start,
+      days: Math.min(3650, Math.max(1, parseInt(s.days, 10) || 1)),
+      time: /^\d{2}:\d{2}$/.test(s.time) ? s.time : '',
+      reminder: { enabled: !!(s.reminder && s.reminder.enabled), before: parseInt(s.reminder && s.reminder.before, 10) || 0 },
+      timer: {
+        enabled: !!(s.timer && s.timer.enabled),
+        minutes: Math.min(600, Math.max(1, parseInt(s.timer && s.timer.minutes, 10) || 15)),
+        dot: !!(s.timer && s.timer.dot),
+      },
+      done: Object.keys(s.done && typeof s.done === 'object' ? s.done : {}).filter(isDate).reduce((o, d) => { o[d] = true; return o; }, {}),
+    }));
+  }
+
+  function cleanYarn(y) {
+    return {
+      total: Math.min(2000, Math.max(1, parseInt(y && y.total, 10) || 1000)),
+      offset: Math.max(0, parseInt(y && y.offset, 10) || 0),
+    };
+  }
 
   /* --- account + sync ----------------------------------------------------------------
      One copy of { goals, done } lives in your account. The newest edit wins: every
@@ -1207,7 +1590,7 @@
       const got = await Cloud.pull();
       if (!signedIn() || Cloud.user().uid !== uid) return;
       const remote = got && Array.isArray(got.goals)
-        ? { goals: cleanGoals(got.goals), done: cleanDone(got.done), updated: Number(got.updated) || 0 }
+        ? { goals: cleanGoals(got.goals), done: cleanDone(got.done), sankalpas: cleanSankalpas(got.sankalpas), yarn: cleanYarn(got.yarn), updated: Number(got.updated) || 0 }
         : null;
       const editing = !!document.querySelector('dialog[open]');     // don't swap data under an open form
       let changed = false;
@@ -1220,10 +1603,14 @@
           if (editing) return;
           const have = new Set(remote.goals.map(g => g.id));
           const extra = state.goals.filter(g => !have.has(g.id));
+          const haveS = new Set(remote.sankalpas.map(s => s.id));
+          const extraS = state.sankalpas.filter(s => !haveS.has(s.id));
           state.goals = remote.goals.concat(extra);
           state.done = Object.assign({}, state.done, remote.done);
-          state.updated = extra.length ? Date.now() : remote.updated;
-          state.dirty = extra.length > 0;
+          state.sankalpas = remote.sankalpas.concat(extraS);
+          state.yarn = remote.yarn;
+          state.updated = extra.length || extraS.length ? Date.now() : remote.updated;
+          state.dirty = extra.length + extraS.length > 0;
           changed = true;
         } else {
           state.updated = state.updated || Date.now();
@@ -1234,6 +1621,8 @@
         if (editing) return;
         state.goals = remote.goals;
         state.done = remote.done;
+        state.sankalpas = remote.sankalpas;
+        state.yarn = remote.yarn;
         state.updated = remote.updated;
         state.dirty = false;
         changed = true;
@@ -1249,7 +1638,7 @@
 
       if (state.dirty) {
         const sent = state.updated;
-        await Cloud.push({ goals: state.goals, done: state.done, updated: sent });
+        await Cloud.push({ goals: state.goals, done: state.done, sankalpas: state.sankalpas, yarn: state.yarn, updated: sent });
         if (state.updated === sent) { state.dirty = false; persist(); }
       }
       setSync(state.dirty ? 'Saving…' : 'Saved');
@@ -1265,6 +1654,7 @@
 
   function lock(message) {
     setSync('');
+    syncYarn();
     document.body.classList.add('locked');
     view.replaceChildren();
     $('login-error').textContent = message || '';
@@ -1326,6 +1716,7 @@
   /* --- go ---------------------------------------------------------------------------- */
 
   window.addEventListener('hashchange', render);
+  applyMode();
   if (locked()) {
     lock();
   } else {

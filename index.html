@@ -14,7 +14,12 @@
 
   <header id="top">
     <a class="brand" href="#board"><span class="brand-dot"></span>Sva</a>
+    <div id="mode" role="group" aria-label="Mode">
+      <button type="button" data-mode="sankalpa" aria-pressed="true">Sankalpa</button>
+      <button type="button" data-mode="goals" aria-pressed="false">Goals</button>
+    </div>
     <nav id="nav" aria-label="Main">
+      <a href="#sankalpa" data-route="sankalpa">Sankalpas</a>
       <a href="#board" data-route="board">Board</a>
       <a href="#progress" data-route="progress">Progress</a>
       <a href="#shareerik" data-route="shareerik">Shareerik</a>
@@ -41,6 +46,15 @@
     </form>
   </div>
 
+  <!-- Sankalpa mode: the yarn stays on screen the whole time (drawn by yarn.js) -->
+  <section id="yarn" aria-label="The yarn" hidden>
+    <div id="yarn-canvas"></div>
+    <div class="yarn-foot">
+      <p id="yarn-count" aria-live="polite"></p>
+      <button id="yarn-settings" type="button" class="small ghost">Yarn settings</button>
+    </div>
+  </section>
+
   <main id="view"></main>
 
   <!-- ======================================================================
@@ -65,6 +79,10 @@
         <li><strong>Look at Progress now and then.</strong> It draws how much of what you planned you actually did, all three areas together. A missed day pulls the line down; a steady week lifts it again.</li>
       </ol>
       <p>The breathing dot lives on the Adhyaatmik page. Open it any time you want a few calm minutes, or attach it to a task's timer.</p>
+
+      <h2>Sankalpa mode</h2>
+      <p>The switch at the top turns Sva into something simpler. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days. No long-term or short-term goals here, only the vow and its days.</p>
+      <p>Tick it each day. Miss a day and that sankalpa is broken at once; you can take it again from day one. Keep it to its last day and one tangle of the yarn comes loose and is laid down neatly around it, in the colour of its area. The yarn starts with 1000 tangles. Untangle them all, then start again if you like.</p>
 
       <h2>Good to know</h2>
       <p>Your goals are kept in your own account, behind your email and password, so they are the same on your phone, your computer and anywhere else you sign in. Nobody else can open them. Reminders appear while Sva is open.</p>
@@ -111,6 +129,76 @@
         <button type="button" id="g-delete" class="danger">Delete</button>
         <span class="grow"></span>
         <button type="button" id="g-cancel" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- sankalpa editor -->
+  <dialog id="sk-dialog">
+    <form id="sk-form">
+      <h2 id="sk-heading">Sankalpa</h2>
+      <label class="field"><span>What do you resolve to do, each day?</span>
+        <input id="k-title" type="text" required maxlength="120" autocomplete="off" placeholder="Brush my teeth at night">
+      </label>
+      <label class="field"><span>Description <em>(optional)</em></span>
+        <textarea id="k-desc" rows="2"></textarea>
+      </label>
+      <label class="field"><span>Area</span>
+        <select id="k-cat"></select>
+      </label>
+      <div class="grid2">
+        <label class="field"><span>For how many days</span><input id="k-days" type="number" min="1" max="3650" required></label>
+        <label class="field"><span>Starts on</span><input id="k-start" type="date" required></label>
+      </div>
+      <p id="k-locked" class="hint" hidden>It has begun, so its start day and length stay as they are.</p>
+      <label class="field"><span>At <em>(optional)</em></span><input id="k-time" type="time"></label>
+
+      <fieldset>
+        <legend><label class="check"><input id="k-rem" type="checkbox"><span>Remind me</span></label></legend>
+        <p id="k-rem-hint" class="hint">Needs a time above.</p>
+        <label class="field" id="k-rem-fields"><span>How early</span>
+          <select id="k-before">
+            <option value="0">At the start time</option>
+            <option value="5">5 minutes before</option>
+            <option value="10">10 minutes before</option>
+            <option value="15">15 minutes before</option>
+            <option value="30">30 minutes before</option>
+            <option value="60">1 hour before</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend><label class="check"><input id="k-timer" type="checkbox"><span>It uses a timer</span></label></legend>
+        <div id="k-timer-fields">
+          <label class="field"><span>Minutes</span><input id="k-minutes" type="number" min="1" max="600" value="15"></label>
+          <label class="check"><input id="k-dot" type="checkbox"><span>Show the breathing dot while the timer runs</span></label>
+        </div>
+      </fieldset>
+
+      <p id="k-error" class="error" hidden></p>
+      <div class="dialog-btns">
+        <button type="button" id="k-delete" class="danger">Delete</button>
+        <span class="grow"></span>
+        <button type="button" id="k-cancel" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- yarn settings -->
+  <dialog id="yarn-dialog">
+    <form id="yarn-form">
+      <h2>The yarn</h2>
+      <p id="y-now" class="muted"></p>
+      <label class="field"><span>How many tangles it has <em>(one comes loose for every sankalpa you keep)</em></span>
+        <input id="y-total" type="number" min="1" max="2000" required>
+      </label>
+      <div class="dialog-btns">
+        <button type="button" id="y-again" class="danger">Start again, fully tangled</button>
+        <span class="grow"></span>
+        <button type="button" id="y-cancel" class="ghost">Cancel</button>
         <button type="submit" class="primary">Save</button>
       </div>
     </form>
@@ -237,6 +325,8 @@
   <input id="import-file" type="file" accept="application/json,.json" hidden>
 
 <script src="schedule.js"></script>
+<script src="anime.min.js"></script>
+<script src="yarn.js"></script>
 <script src="cloud-config.js"></script>
 <script src="sync.js"></script>
 <script src="main.js"></script>

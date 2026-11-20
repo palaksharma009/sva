@@ -4,6 +4,22 @@ A personal board for three areas — Shareerik, Adhyaatmik, Maansik — with a
 breathing dot built in. Plain files, no build step. You sign in, and your data
 follows you to every device.
 
+## Sankalpa mode
+
+Sva opens in Sankalpa mode; the **Sankalpa / Goals** switch at the top changes
+to the goals board and back, and each device remembers your choice. In Sankalpa
+mode there are no long-term or short-term goals: a sankalpa is one thing you
+resolve to do every day, for a number of days you choose (required). It has an
+area and its colour, and can have a time, a reminder and a timer like a task.
+
+- Tick it each day. **Miss a day and it is broken at once**; "Take it again"
+  starts it over from day one.
+- **Keep it to its last day** and one tangle of the yarn comes loose.
+- **The yarn** is on screen the whole time in this mode: a tangled lump of
+  thread in the three area colours, 1000 tangles to begin with. Each kept
+  sankalpa pulls one knot out and lays it down neatly on the coil around the
+  lump. "Yarn settings" changes the number of tangles or starts a fresh yarn.
+
 ## Run it
 
 Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
@@ -87,6 +103,7 @@ your computer. About → **Save a backup file** gives you a copy of your own.
 | `manifest.webmanifest`, `sw.js`, `icon-*.png` | what makes it installable and usable offline |
 | `index.html`, `main.css`, `main.js` | the app |
 | `cloud-config.js`, `sync.js` | which Firebase project to use, and the login + sync |
+| `yarn.js`, `anime.min.js` | the yarn picture in Sankalpa mode, and the animation library it uses ([anime.js](https://animejs.com), MIT) |
 | `schedule.js` | the repeat rules ("does this task fall on this day?") |
 | `dot.html`, `styles.css`, `app.js`, `config.js` | the breathing dot, unchanged |
 

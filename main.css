@@ -3,19 +3,54 @@
    The breathing dot keeps its own stylesheet: styles.css.
    ============================================================================ */
 
+/* ============================================================================
+   COLOURS — every colour in the app is set here, nowhere else.
+   Change a value, save, reload the page.
+
+   Two colours live outside this file:
+     - the breathing dot's own colours: config.js (colors: background, dot)
+     - the phone's browser bar: index.html, <meta name="theme-color">;
+       keep it the same as --bg below
+   ============================================================================ */
+
 :root {
-  --bg: #0d0f12;
-  --panel: #15181d;
-  --panel-2: #1b1f26;
-  --line: #272c35;
-  --text: #e9e4da;
-  --muted: #8a8f98;
-  --danger: #e07a6a;
-  --shareerik: #e0946a;
-  --adhyaatmik: #a99bf0;
-  --maansik: #6cc3c0;
-  --accent: var(--text);
-  --radius: 10px;
+  /* --- the page ---------------------------------------------------------- */
+  --bg: #0d0f12;          /* page background */
+  --panel: #15181d;       /* cards and boxes (board columns, goals, dialogs) */
+  --panel-2: #1b1f26;     /* boxes inside boxes, buttons, the active menu item */
+  --line: #272c35;        /* borders and dividing lines */
+  --line-hover: #3a414d;  /* a button's border while the mouse is over it */
+
+  /* --- text -------------------------------------------------------------- */
+  --text: #e9e4da;        /* main text; also the filled "primary" buttons */
+  --muted: #8a8f98;       /* secondary text: labels, dates, hints */
+  --danger: #e07a6a;      /* Delete buttons, error messages, a broken sankalpa */
+
+  /* --- the three areas ---------------------------------------------------
+     Used for everything that belongs to an area: the coloured edge of cards,
+     ticks, progress bars, tags, and (unless changed below) the yarn. */
+  --shareerik: #e0946a;   /* Shareerik */
+  --adhyaatmik: #a99bf0;  /* Adhyaatmik */
+  --maansik: #6cc3c0;     /* Maansik */
+
+  /* --- the yarn (Sankalpa mode) ------------------------------------------
+     The thread starts out in the area colours above. To give the yarn its
+     own colours, replace var(...) with a colour, e.g.  --yarn-shareerik: #ff8a5c; */
+  --yarn-shareerik: var(--shareerik);    /* Shareerik thread */
+  --yarn-adhyaatmik: var(--adhyaatmik);  /* Adhyaatmik thread */
+  --yarn-maansik: var(--maansik);        /* Maansik thread */
+  --yarn-bg: var(--bg);                  /* background behind the yarn */
+  --yarn-track: rgba(138, 143, 152, 0.16);  /* the faint empty coil waiting to be filled */
+  --yarn-glint: rgba(255, 255, 255, 0.85);  /* the bright dot running along the untangled thread */
+
+  /* --- see-through layers ------------------------------------------------ */
+  --backdrop: rgba(0, 0, 0, 0.6);     /* dims the page behind an open dialog */
+  --veil: rgba(13, 15, 18, 0.6);      /* behind the timer's text when the dot shows through; --bg at 60% */
+  --shadow: rgba(0, 0, 0, 0.5);       /* shadow under pop-up notes and the graph's tooltip */
+
+  /* --- not colours -------------------------------------------------------- */
+  --accent: var(--text);  /* set automatically to an area's colour inside its cards; leave as is */
+  --radius: 10px;         /* how round the corners of cards are */
 }
 
 * {
@@ -98,7 +133,7 @@ button {
   cursor: pointer;
 }
 button:hover {
-  border-color: #3a414d;
+  border-color: var(--line-hover);
 }
 button.primary {
   background: var(--text);
@@ -605,7 +640,7 @@ dialog {
   overflow: auto;
 }
 dialog::backdrop {
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--backdrop);
 }
 dialog h2 {
   font-size: 19px;
@@ -752,7 +787,7 @@ legend {
   padding: 20px 24px;
 }
 .timer-top > div {
-  background: rgba(13, 15, 18, 0.6);
+  background: var(--veil);
   border-radius: 10px;
   padding: 8px 12px;
 }
@@ -805,7 +840,7 @@ legend {
 /* with the dot: clock and controls drop to the bottom so the dot is in the clear */
 #timer.with-dot .timer-bottom {
   margin: auto auto 22px;
-  background: rgba(13, 15, 18, 0.6);
+  background: var(--veil);
   gap: 10px;
 }
 #timer.with-dot #timer-clock {
@@ -833,7 +868,7 @@ legend {
   border-left: 3px solid var(--accent);
   border-radius: 10px;
   padding: 12px 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px var(--shadow);
 }
 .toast b {
   display: block;
@@ -1080,7 +1115,7 @@ body.locked #view {
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px var(--shadow);
 }
 
 /* --- fold a long-term or short-term goal shut ------------------------------ */
@@ -1135,3 +1170,77 @@ body.dragging-short .goal.drop { outline-style: solid; background: var(--panel-2
 
 .badge.nature { color: var(--accent); border-color: var(--accent); }
 .goal.guests { border-left-style: dashed; }
+
+/* --- Sankalpa mode --------------------------------------------------------- */
+
+#mode { display: flex; border: 1px solid var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
+#mode button { border: 0; background: transparent; color: var(--muted); padding: 4px 11px; border-radius: 7px; font-size: 13px; }
+#mode button:hover { color: var(--text); }
+#mode button[aria-pressed="true"] { background: var(--text); color: var(--bg); font-weight: 600; }
+
+#nav a[data-route="sankalpa"] { display: none; }
+body.mode-sankalpa #nav a { display: none; }
+body.mode-sankalpa #nav a[data-route="sankalpa"] { display: block; }
+
+/* the yarn: beside the list on a wide screen, pinned above it on a narrow one */
+#yarn { display: flex; flex-direction: column; background: var(--yarn-bg); }
+#yarn-canvas { flex: 1; min-height: 0; display: grid; place-items: center; }
+#yarn-canvas canvas { display: block; }
+.yarn-foot { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 4px 0 2px; }
+#yarn-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 981px) {
+  body.mode-sankalpa #yarn {
+    position: fixed;
+    left: 0;
+    top: var(--top-h, 58px);
+    bottom: 0;
+    width: 48%;
+    padding: 18px 18px 22px;
+    border-right: 1px solid var(--line);
+  }
+  body.mode-sankalpa #view { margin: 0 0 0 48%; max-width: none; }
+}
+@media (max-width: 980px) {
+  body.mode-sankalpa #yarn {
+    position: sticky;
+    top: var(--top-h, 58px);
+    z-index: 4;
+    height: 44vh;
+    min-height: 240px;
+    padding: 8px 12px 6px;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sk-block { margin-bottom: 22px; }
+.sk-block > h2 { margin-bottom: 10px; }
+.sks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sk {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.sk-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.sk-top { display: grid; gap: 1px; }
+.sk .card-title { font-size: 16px; }
+.sk.done .card-title { color: var(--muted); }
+.sk.is-kept, .sk.is-broken { background: transparent; }
+.sk.is-broken { border-left-color: var(--line); }
+.sk.is-broken .card-title { color: var(--muted); text-decoration: line-through; }
+.sk-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.sk .tick { margin-top: 2px; }
+.tick.still { display: grid; place-items: center; cursor: default; }
+.tick.still.broken { border-color: var(--danger); color: var(--danger); }
+.pips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pip { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); }
+.pip.on { background: var(--accent); border-color: var(--accent); }
+.pip.now { border-color: var(--text); }
+.pip.miss { border-color: var(--danger); }
+.sk .bar { margin: 2px 0; }

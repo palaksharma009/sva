@@ -18,7 +18,9 @@ area and its colour, and can have a time, a reminder and a timer like a task.
 - **The yarn** is on screen the whole time in this mode: a tangled lump of
   thread in the three area colours, 1000 tangles to begin with. Each kept
   sankalpa pulls one knot out and lays it down neatly on the coil around the
-  lump. "Yarn settings" changes the number of tangles or starts a fresh yarn.
+  lump. The lump is 3D: it turns slowly by itself, and you can drag it with
+  the mouse or a finger to spin it any way. "Yarn settings" changes the number
+  of tangles or starts a fresh yarn.
 
 ## Run it
 

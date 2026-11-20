@@ -15,42 +15,64 @@
 
 :root {
   /* --- the page ---------------------------------------------------------- */
-  --bg: #0d0f12;          /* page background */
-  --panel: #15181d;       /* cards and boxes (board columns, goals, dialogs) */
-  --panel-2: #1b1f26;     /* boxes inside boxes, buttons, the active menu item */
-  --line: #272c35;        /* borders and dividing lines */
-  --line-hover: #3a414d;  /* a button's border while the mouse is over it */
+  --bg: #0d0f12; /* page background */
+  --panel: #15181d; /* cards and boxes (board columns, goals, dialogs) */
+  --panel-2: #1b1f26; /* boxes inside boxes, buttons, the active menu item */
+  --line: #272c35; /* borders and dividing lines */
+  --line-hover: #3a414d; /* a button's border while the mouse is over it */
 
   /* --- text -------------------------------------------------------------- */
-  --text: #e9e4da;        /* main text; also the filled "primary" buttons */
-  --muted: #8a8f98;       /* secondary text: labels, dates, hints */
-  --danger: #e07a6a;      /* Delete buttons, error messages, a broken sankalpa */
+  --text: #e9e4da; /* main text; also the filled "primary" buttons */
+  --muted: #8a8f98; /* secondary text: labels, dates, hints */
+  --danger: #e07a6a; /* Delete buttons, error messages, a broken sankalpa */
 
   /* --- the three areas ---------------------------------------------------
      Used for everything that belongs to an area: the coloured edge of cards,
      ticks, progress bars, tags, and (unless changed below) the yarn. */
-  --shareerik: #e0946a;   /* Shareerik */
-  --adhyaatmik: #a99bf0;  /* Adhyaatmik */
-  --maansik: #6cc3c0;     /* Maansik */
+  --shareerik: #fe218b; /* Shareerik */
+  --adhyaatmik: #fed700; /* Adhyaatmik */
+  --maansik: #21b0fe; /* Maansik */
 
   /* --- the yarn (Sankalpa mode) ------------------------------------------
      The thread starts out in the area colours above. To give the yarn its
      own colours, replace var(...) with a colour, e.g.  --yarn-shareerik: #ff8a5c; */
-  --yarn-shareerik: var(--shareerik);    /* Shareerik thread */
-  --yarn-adhyaatmik: var(--adhyaatmik);  /* Adhyaatmik thread */
-  --yarn-maansik: var(--maansik);        /* Maansik thread */
-  --yarn-bg: var(--bg);                  /* background behind the yarn */
-  --yarn-track: rgba(138, 143, 152, 0.16);  /* the faint empty coil waiting to be filled */
-  --yarn-glint: rgba(255, 255, 255, 0.85);  /* the bright dot running along the untangled thread */
+  --yarn-shareerik: var(--shareerik); /* Shareerik thread */
+  --yarn-adhyaatmik: var(--adhyaatmik); /* Adhyaatmik thread */
+  --yarn-maansik: var(--maansik); /* Maansik thread */
+  --yarn-bg: var(--bg); /* background behind the yarn */
+  --yarn-track: rgba(
+    138,
+    143,
+    152,
+    0.16
+  ); /* the faint empty coil waiting to be filled */
+  --yarn-glint: rgba(
+    255,
+    255,
+    255,
+    0.85
+  ); /* the bright dot running along the untangled thread */
 
   /* --- see-through layers ------------------------------------------------ */
-  --backdrop: rgba(0, 0, 0, 0.6);     /* dims the page behind an open dialog */
-  --veil: rgba(13, 15, 18, 0.6);      /* behind the timer's text when the dot shows through; --bg at 60% */
-  --shadow: rgba(0, 0, 0, 0.5);       /* shadow under pop-up notes and the graph's tooltip */
+  --backdrop: rgba(0, 0, 0, 0.6); /* dims the page behind an open dialog */
+  --veil: rgba(
+    13,
+    15,
+    18,
+    0.6
+  ); /* behind the timer's text when the dot shows through; --bg at 60% */
+  --shadow: rgba(
+    0,
+    0,
+    0,
+    0.5
+  ); /* shadow under pop-up notes and the graph's tooltip */
 
   /* --- not colours -------------------------------------------------------- */
-  --accent: var(--text);  /* set automatically to an area's colour inside its cards; leave as is */
-  --radius: 10px;         /* how round the corners of cards are */
+  --accent: var(
+    --text
+  ); /* set automatically to an area's colour inside its cards; leave as is */
+  --radius: 10px; /* how round the corners of cards are */
 }
 
 * {
@@ -1120,7 +1142,11 @@ body.locked #view {
 
 /* --- fold a long-term or short-term goal shut ------------------------------ */
 
-.goal-title { flex: 1; min-width: 0; cursor: pointer; }
+.goal-title {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
 .goal-head .fold,
 .short-head .fold {
   flex: none;
@@ -1134,21 +1160,44 @@ body.locked #view {
   line-height: 1;
   margin: 8px -4px 0 -8px;
 }
-.short-head .fold { margin-top: 4px; }
+.short-head .fold {
+  margin-top: 4px;
+}
 .goal-head .fold:hover,
-.short-head .fold:hover { color: var(--text); border-color: var(--line); }
+.short-head .fold:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
 @media (pointer: coarse) {
-  .goal-head .fold { width: 38px; height: 38px; margin-top: 4px; }
-  .short-head .fold { width: 38px; height: 38px; margin-top: 0; }
+  .goal-head .fold {
+    width: 38px;
+    height: 38px;
+    margin-top: 4px;
+  }
+  .short-head .fold {
+    width: 38px;
+    height: 38px;
+    margin-top: 0;
+  }
 }
 
 /* --- drag a long-term goal onto another area in the top bar ---------------- */
 
-.goal[draggable="true"] { cursor: grab; }
-.goal.dragging { opacity: 0.45; }
-#nav a[data-route="shareerik"] { --accent: var(--shareerik); }
-#nav a[data-route="adhyaatmik"] { --accent: var(--adhyaatmik); }
-#nav a[data-route="maansik"] { --accent: var(--maansik); }
+.goal[draggable="true"] {
+  cursor: grab;
+}
+.goal.dragging {
+  opacity: 0.45;
+}
+#nav a[data-route="shareerik"] {
+  --accent: var(--shareerik);
+}
+#nav a[data-route="adhyaatmik"] {
+  --accent: var(--adhyaatmik);
+}
+#nav a[data-route="maansik"] {
+  --accent: var(--maansik);
+}
 body.dragging-goal #nav a[data-route="shareerik"],
 body.dragging-goal #nav a[data-route="adhyaatmik"],
 body.dragging-goal #nav a[data-route="maansik"] {
@@ -1156,38 +1205,112 @@ body.dragging-goal #nav a[data-route="maansik"] {
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
 }
-body.dragging-goal #nav a.active { outline-style: dotted; opacity: 0.6; }   /* already here */
-#nav a.drop { background: var(--accent); color: var(--bg) !important; outline-style: solid !important; }
+body.dragging-goal #nav a.active {
+  outline-style: dotted;
+  opacity: 0.6;
+} /* already here */
+#nav a.drop {
+  background: var(--accent);
+  color: var(--bg) !important;
+  outline-style: solid !important;
+}
 
 /* --- drag a short-term goal onto another long-term goal -------------------- */
 
-.short[draggable="true"] { cursor: grab; }
-.short.dragging { opacity: 0.45; }
-body.dragging-short .goal:not(.drag-home) { outline: 2px dashed var(--accent); outline-offset: 2px; }
-body.dragging-short .goal.drop { outline-style: solid; background: var(--panel-2); }
+.short[draggable="true"] {
+  cursor: grab;
+}
+.short.dragging {
+  opacity: 0.45;
+}
+body.dragging-short .goal:not(.drag-home) {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+body.dragging-short .goal.drop {
+  outline-style: solid;
+  background: var(--panel-2);
+}
 
 /* --- a task whose nature differs from its goal's area ---------------------- */
 
-.badge.nature { color: var(--accent); border-color: var(--accent); }
-.goal.guests { border-left-style: dashed; }
+.badge.nature {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.goal.guests {
+  border-left-style: dashed;
+}
 
 /* --- Sankalpa mode --------------------------------------------------------- */
 
-#mode { display: flex; border: 1px solid var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
-#mode button { border: 0; background: transparent; color: var(--muted); padding: 4px 11px; border-radius: 7px; font-size: 13px; }
-#mode button:hover { color: var(--text); }
-#mode button[aria-pressed="true"] { background: var(--text); color: var(--bg); font-weight: 600; }
+#mode {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+#mode button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+#mode button:hover {
+  color: var(--text);
+}
+#mode button[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
 
-#nav a[data-route="sankalpa"] { display: none; }
-body.mode-sankalpa #nav a { display: none; }
-body.mode-sankalpa #nav a[data-route="sankalpa"] { display: block; }
+#nav a[data-route="sankalpa"] {
+  display: none;
+}
+body.mode-sankalpa #nav a {
+  display: none;
+}
+body.mode-sankalpa #nav a[data-route="sankalpa"] {
+  display: block;
+}
 
 /* the yarn: beside the list on a wide screen, pinned above it on a narrow one */
-#yarn { display: flex; flex-direction: column; background: var(--yarn-bg); }
-#yarn-canvas { flex: 1; min-height: 0; display: grid; place-items: center; }
-#yarn-canvas canvas { display: block; }
-.yarn-foot { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 4px 0 2px; }
-#yarn-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+#yarn {
+  display: flex;
+  flex-direction: column;
+  background: var(--yarn-bg);
+}
+#yarn-canvas {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+#yarn-canvas canvas {
+  display: block;
+  cursor: grab; /* drag it to turn the yarn */
+  touch-action: none;
+}
+#yarn-canvas canvas.grabbing {
+  cursor: grabbing;
+}
+.yarn-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0 2px;
+}
+#yarn-count {
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
 
 @media (min-width: 981px) {
   body.mode-sankalpa #yarn {
@@ -1199,7 +1322,10 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] { display: block; }
     padding: 18px 18px 22px;
     border-right: 1px solid var(--line);
   }
-  body.mode-sankalpa #view { margin: 0 0 0 48%; max-width: none; }
+  body.mode-sankalpa #view {
+    margin: 0 0 0 48%;
+    max-width: none;
+  }
 }
 @media (max-width: 980px) {
   body.mode-sankalpa #yarn {
@@ -1213,10 +1339,22 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] { display: block; }
   }
 }
 
-.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.sk-block { margin-bottom: 22px; }
-.sk-block > h2 { margin-bottom: 10px; }
-.sks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tiles.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sk-block {
+  margin-bottom: 22px;
+}
+.sk-block > h2 {
+  margin-bottom: 10px;
+}
+.sks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
 .sk {
   display: flex;
   gap: 12px;
@@ -1227,20 +1365,72 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] { display: block; }
   border-radius: var(--radius);
   padding: 14px;
 }
-.sk-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
-.sk-top { display: grid; gap: 1px; }
-.sk .card-title { font-size: 16px; }
-.sk.done .card-title { color: var(--muted); }
-.sk.is-kept, .sk.is-broken { background: transparent; }
-.sk.is-broken { border-left-color: var(--line); }
-.sk.is-broken .card-title { color: var(--muted); text-decoration: line-through; }
-.sk-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-.sk .tick { margin-top: 2px; }
-.tick.still { display: grid; place-items: center; cursor: default; }
-.tick.still.broken { border-color: var(--danger); color: var(--danger); }
-.pips { display: flex; flex-wrap: wrap; gap: 4px; }
-.pip { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); }
-.pip.on { background: var(--accent); border-color: var(--accent); }
-.pip.now { border-color: var(--text); }
-.pip.miss { border-color: var(--danger); }
-.sk .bar { margin: 2px 0; }
+.sk-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.sk-top {
+  display: grid;
+  gap: 1px;
+}
+.sk .card-title {
+  font-size: 16px;
+}
+.sk.done .card-title {
+  color: var(--muted);
+}
+.sk.is-kept,
+.sk.is-broken {
+  background: transparent;
+}
+.sk.is-broken {
+  border-left-color: var(--line);
+}
+.sk.is-broken .card-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.sk-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.sk .tick {
+  margin-top: 2px;
+}
+.tick.still {
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+.tick.still.broken {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+}
+.pip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.pip.now {
+  border-color: var(--text);
+}
+.pip.miss {
+  border-color: var(--danger);
+}
+.sk .bar {
+  margin: 2px 0;
+}

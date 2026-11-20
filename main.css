@@ -54,9 +54,12 @@
   ); /* the bright dot running along the untangled thread */
 
   /* --- the lotus (Sankalpa mode) -----------------------------------------
-     The petal colour here is the usual one. You can also pick a colour in the
-     app (Settings, under the picture); that choice wins over this line and
-     follows you to your other devices. Write it as #rrggbb. */
+     Normally each petal takes the colour of its sankalpa's area (the three
+     area colours above), softened into a pastel automatically; change those
+     three and the petals follow.
+     --lotus is used when you choose "The whole lotus in one colour" in the
+     app (Settings, under the picture). A colour picked there wins over this
+     line and follows you to your other devices. Write it as #rrggbb. */
   --lotus: #f29bb7; /* lotus petals */
   --lotus-heart: #f2c94c; /* the golden heart in the middle of the lotus */
 

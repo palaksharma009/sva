@@ -15,9 +15,12 @@
    the yarn, so main.js can swap one for the other:
 
      Lotus.show(holder)
-     Lotus.set({ total, freed, lotus, heart, track, animate })
+     Lotus.set({ total, freed, byArea, colors, lotus, heart, track, animate })
          total   : how many petals a full bloom has
-         freed   : one entry per kept sankalpa (only the count matters here)
+         freed   : the area id of each kept sankalpa, oldest first: one petal each
+         byArea  : true  = each petal takes its sankalpa's area colour, softened
+                           to a pastel (colors: { areaId: '#rrggbb' })
+                   false = the whole flower is the one colour in `lotus`
          lotus   : the petal colour, '#rrggbb'      (these come from the colour
          heart   : the colour of the heart            list in main.css, or from
          track   : the faint outline of full bloom    the picture's settings)
@@ -41,6 +44,9 @@ const Lotus = (function () {
   let model = null;                       // { total, petals, pod, reach }
   let count = 0;
   let petalColor = '#f29bb7', heartColor = '#f2c94c', trackColor = 'rgba(138, 143, 152, 0.16)';   // used only if nothing is given
+  let byArea = false;
+  let tints = [];                         // tints[k] = the look of petal k: { body, deep }
+  let glowColor = [242, 155, 183];
   let img = null, imgZoom = 1;            // the settled petals, painted once
   let opening = [];                       // petals in the middle of opening
   let view = { zoom: CLOSE };
@@ -60,6 +66,46 @@ const Lotus = (function () {
   function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
   function css(c, alpha) { return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + (alpha == null ? 1 : alpha) + ')'; }
   const WHITE = [255, 255, 255], DEEP = [28, 10, 30];
+
+  function toHsl(c) {
+    const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+    if (!d) return [0, 0, l];
+    const s = d / (1 - Math.abs(2 * l - 1));
+    const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+  function fromHsl(h, s, l) {
+    const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    return [f(0) * 255, f(8) * 255, f(4) * 255];
+  }
+
+  /* A strong area colour, turned into petal colours: the same hue, soft and light for the
+     petal itself, and a deeper, richer version of it for the shaded root and the outline. */
+  function pastel(c) {
+    const hsl = toHsl(c), h = hsl[0], s = hsl[1];
+    if (s < 0.08) return { body: mix(c, WHITE, 0.55), deep: mix(c, DEEP, 0.45) };     // a grey stays a grey
+    return { body: fromHsl(h, Math.min(0.9, s * 0.85 + 0.1), 0.8), deep: fromHsl(h, Math.min(0.75, s * 0.7 + 0.1), 0.5) };
+  }
+
+  /* What each petal looks like: its area's pastel, or the one lotus colour for all of them. */
+  function tintAll(freed, colors) {
+    const one = rgb(petalColor) || [242, 155, 183];
+    const plain = { body: one, deep: mix(one, DEEP, 0.55) };
+    const made = {};
+    tints = [];
+    let sum = [0, 0, 0];
+    for (let k = 0; k < count; k++) {
+      let t = plain;
+      const c = byArea && colors ? rgb(colors[freed[k]]) : null;
+      if (c) t = made[freed[k]] || (made[freed[k]] = pastel(c));
+      tints.push(t);
+      sum = [sum[0] + t.body[0], sum[1] + t.body[1], sum[2] + t.body[2]];
+    }
+    // the light behind the flower: the blend of its petals, or a soft rose before the first one
+    glowColor = count ? [sum[0] / count, sum[1] / count, sum[2] / count] : (byArea ? [244, 214, 226] : one);
+  }
 
   /* --- the flower ------------------------------------------------------------- */
 
@@ -87,13 +133,14 @@ const Lotus = (function () {
   }
 
   /* One petal: rooted at the heart side, pointing outwards. `open` 0..1 is how far it has opened. */
-  function petal(c, p, open, base) {
+  function petal(c, p, open, tint) {
+    const base = tint.body;
     const len = p.len * open, wid = p.wid * (0.35 + 0.65 * open);
     // the root lies in the shade of the petals above it; the tip catches the light.
     // petals near the heart are paler, the outer ones carry the full colour.
-    const body = mix(base, WHITE, 0.45 * (1 - p.f));
-    const shade = mix(body, DEEP, 0.4 + 0.2 * p.f);
-    const tip = mix(body, WHITE, 0.5 - 0.22 * p.f);
+    const body = mix(base, WHITE, (byArea ? 0.3 : 0.45) * (1 - p.f));
+    const shade = mix(mix(body, tint.deep, 0.6 + 0.2 * p.f), DEEP, 0.12 + 0.1 * p.f);
+    const tip = mix(body, WHITE, 0.55 - 0.2 * p.f);
     const turn = 0.42 + 0.3 * p.f;                 // further out, less of a petal shows, so the colour comes in later
     c.save();
     c.translate(C + Math.cos(p.ang) * p.r, C + Math.sin(p.ang) * p.r);
@@ -109,13 +156,13 @@ const Lotus = (function () {
     c.fillStyle = g;
     c.fill();
     c.lineWidth = Math.max(0.0009, p.len * 0.022);
-    c.strokeStyle = css(mix(base, DEEP, 0.6), 0.55);
+    c.strokeStyle = css(mix(tint.deep, DEEP, 0.25), 0.55);
     c.stroke();
     c.beginPath();                                   // the fold down the middle
     c.moveTo(len * 0.12, 0);
     c.lineTo(len * 0.8, 0);
     c.lineWidth = Math.max(0.0006, p.len * 0.012);
-    c.strokeStyle = css(mix(base, DEEP, 0.4), 0.22);
+    c.strokeStyle = css(tint.deep, 0.25);
     c.stroke();
     c.restore();
   }
@@ -142,7 +189,6 @@ const Lotus = (function () {
   /* The petals that have finished opening are painted once, at the size they are viewed at. */
   function paint() {
     if (!model || !S) return;
-    const base = rgb(petalColor) || [242, 155, 183];
     const c = document.createElement('canvas');
     c.width = c.height = Math.max(1, Math.round(S * dpr));
     const x = c.getContext('2d');
@@ -154,7 +200,7 @@ const Lotus = (function () {
     x.lineJoin = 'round';
     const busy = new Set(opening.map(o => o.p.k));
     for (let k = Math.min(count, model.total) - 1; k >= 0; k--) {     // outer ones first, so inner petals lie on top
-      if (!busy.has(k)) petal(x, model.petals[k], 1, base);
+      if (!busy.has(k)) petal(x, model.petals[k], 1, tints[k]);
     }
     heart(x);
     img = c;
@@ -172,7 +218,7 @@ const Lotus = (function () {
     }
 
     const px = S * dpr;
-    const base = rgb(petalColor) || [242, 155, 183];
+    const base = glowColor;
     const breath = still ? 1 : 1 + 0.012 * Math.sin(now / 2100);
     const z = view.zoom * breath;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -207,9 +253,10 @@ const Lotus = (function () {
       const o = opening[n];
       if (o.open <= 0) continue;
       ctx.save();
-      ctx.shadowColor = css(mix(base, WHITE, 0.5));
+      const tint = tints[o.p.k];
+      ctx.shadowColor = css(mix(tint.body, WHITE, 0.4));
       ctx.shadowBlur = (1 - Math.min(1, o.glow)) * px * 0.035;
-      petal(ctx, o.p, o.open, base);
+      petal(ctx, o.p, o.open, tint);
       ctx.restore();
     }
 
@@ -318,6 +365,7 @@ const Lotus = (function () {
   function set(opts) {
     if (!canvas) return;
     petalColor = opts.lotus || petalColor;
+    byArea = !!opts.byArea;
     heartColor = opts.heart || heartColor;
     trackColor = opts.track || trackColor;
     const total = Math.max(1, opts.total | 0);
@@ -327,6 +375,7 @@ const Lotus = (function () {
     stopAnims();
     opening = [];
     count = Math.min(total, (opts.freed || []).length);
+    tintAll(opts.freed || [], opts.colors);
     canvas.setAttribute('aria-label', 'A lotus with ' + count + ' of ' + total + ' petals open. Drag to turn it.');
 
     const lively = typeof anime === 'function' && !still && S;

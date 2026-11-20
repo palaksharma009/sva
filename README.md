@@ -20,13 +20,15 @@ area and its colour, and can have a time, a reminder and a timer like a task.
   progress:
   - **The lotus** (the usual one) starts with no petals, only its golden
     heart. Each kept sankalpa opens one more petal, spiralling out from the
-    heart, until it is in full bloom at 1000.
+    heart, until it is in full bloom at 1000. A petal takes the colour of its
+    sankalpa's area, softened into a pastel; Settings can make the whole
+    lotus one colour of your choosing instead.
   - **The yarn** is a tangled lump of thread in the three area colours, 1000
     tangles to begin with. Each kept sankalpa pulls one knot out and lays it
     down neatly on the coil around the lump.
 - Both turn slowly by themselves, and you can drag them with the mouse or a
-  finger to spin them. **Settings**, beside the switch, changes the lotus's
-  colour, the number of petals / tangles, or starts the picture again.
+  finger to spin them. **Settings**, beside the switch, changes how the lotus
+  is coloured, the number of petals / tangles, or starts the picture again.
 
 ## Run it
 

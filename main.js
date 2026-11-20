@@ -87,7 +87,7 @@
   }
 
   function blank() {
-    return { goals: [], done: {}, fired: {}, sankalpas: [], yarn: { total: 1000, offset: 0, lotus: '' }, updated: 0, owner: null, dirty: false };
+    return { goals: [], done: {}, fired: {}, sankalpas: [], yarn: { total: 1000, offset: 0, lotus: '', petals: '' }, updated: 0, owner: null, dirty: false };
   }
 
   /* Write to this device only. */
@@ -1214,8 +1214,10 @@
                      reminder: { enabled, before }, timer: { enabled, minutes, dot },
                      done: { 'YYYY-MM-DD': true } }]
        yarn: { total, offset,       how many petals / tangles the picture has, and how many
-               lotus }              kept sankalpas were already spent on an earlier picture;
-                                    lotus is the petal colour you chose ('' = the one in main.css)
+               petals, lotus }      kept sankalpas were already spent on an earlier picture.
+                                    petals: '' = each petal takes its area's colour, as a pastel;
+                                            'one' = the whole lotus is one colour, which is
+                                    lotus: the colour you picked ('' = the one in main.css)
 
      The picture comes in two kinds, switched under it: the lotus (lotus.js, the
      default) gains a petal for every kept sankalpa; the yarn (yarn.js) loses a tangle.
@@ -1308,7 +1310,7 @@
 
     const y = yarnData();
     const key = y.total + ':' + y.offset;
-    const sig = visual + ':' + (state.yarn.lotus || '') + ':' + key + ':' + y.freed.join(',');
+    const sig = visual + ':' + (state.yarn.petals || '') + ':' + (state.yarn.lotus || '') + ':' + key + ':' + y.freed.join(',');
     if (sig !== yarnSig) {
       // how many of these has this device already watched come loose?
       let seen = y.freed.length;
@@ -1321,8 +1323,11 @@
       // the colours come from the top of main.css
       const cssVar = name => css.getPropertyValue(name).trim();
       for (const c of CATS) colors[c.id] = cssVar('--yarn-' + c.id) || cssVar('--' + c.id) || cssVar('--text');
+      const areaColors = {};                       // the lotus softens these into pastels itself
+      for (const c of CATS) areaColors[c.id] = cssVar('--' + c.id);
       yarn.set({
-        total: y.total, freed: y.freed, colors, animate: y.freed.length - seen,
+        total: y.total, freed: y.freed, animate: y.freed.length - seen,
+        colors: visual === 'lotus' ? areaColors : colors, byArea: state.yarn.petals !== 'one',
         track: cssVar('--yarn-track'), glint: cssVar('--yarn-glint'),
         lotus: state.yarn.lotus || cssVar('--lotus'), heart: cssVar('--lotus-heart'),
       });
@@ -1556,9 +1561,12 @@
     $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas kept so far on this picture.';
     lotusPicked = isHex(state.yarn.lotus) ? state.yarn.lotus : '';
     $('y-lotus').value = lotusPicked || lotusDefault();
+    $('y-petals').value = state.yarn.petals === 'one' ? 'one' : 'area';
+    $('y-lotus-field').hidden = $('y-petals').value !== 'one';
     $('yarn-dialog').showModal();
   });
 
+  $('y-petals').addEventListener('change', () => { $('y-lotus-field').hidden = $('y-petals').value !== 'one'; });
   $('y-lotus').addEventListener('input', () => { lotusPicked = $('y-lotus').value; });
   $('y-lotus-reset').addEventListener('click', () => { lotusPicked = ''; $('y-lotus').value = lotusDefault(); });
 
@@ -1567,6 +1575,7 @@
     const y = yarnData();
     state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
     state.yarn.lotus = lotusPicked;
+    state.yarn.petals = $('y-petals').value === 'one' ? 'one' : '';
     save();
     $('yarn-dialog').close();
     render();
@@ -1607,6 +1616,7 @@
       total: Math.min(2000, Math.max(1, parseInt(y && y.total, 10) || 1000)),
       offset: Math.max(0, parseInt(y && y.offset, 10) || 0),
       lotus: /^#[0-9a-f]{6}$/i.test(y && y.lotus) ? y.lotus : '',
+      petals: y && y.petals === 'one' ? 'one' : '',
     };
   }
 

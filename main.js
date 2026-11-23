@@ -1225,7 +1225,9 @@
      Nothing about a sankalpa's fate is stored; it is read off its ticks every time:
        upcoming  it has not started yet
        active    every day so far is ticked (today may still be open)
-       broken    a day went by without a tick; it ended there, at once
+       broken    a day went by without a tick; it ended there, at once.
+                 If you did do it and only missed ticking it, "I did it that day"
+                 on the card ticks that day afterwards and the sankalpa carries on.
        kept      every day to the last is ticked; one tangle of the yarn comes loose */
 
   const MODE_KEY = 'sva.mode';
@@ -1413,7 +1415,13 @@
         s.description && st.state === 'active' ? h('p', { class: 'goal-desc' }, s.description) : null,
         st.state === 'upcoming' ? null : skDays(s, st, today),
         tags.length && st.state !== 'kept' && st.state !== 'broken' ? h('div', { class: 'badges' }, tags.map(t => h('span', { class: 'badge' }, t))) : null,
+        st.state === 'broken' ? h('p', { class: 'hint' }, 'Did it on ' + Schedule.niceDate(st.on) + ' but could not tick it here? Mark that day done and it carries on.') : null,
         h('div', { class: 'sk-btns' },
+          // ticking the missed day afterwards: the day counts, and the sankalpa is no longer broken there
+          st.state === 'broken' && h('button', {
+            type: 'button', class: 'small primary',
+            onclick: () => { setSkDone(s, st.on, true); render(); },
+          }, 'I did it that day'),
           st.state === 'active' && s.timer.enabled && h('button', { type: 'button', class: 'small primary', onclick: () => skTimer(s, st) }, 'Open timer'),
           (st.state === 'kept' || st.state === 'broken') && h('button', { type: 'button', class: 'small', onclick: () => openSkDialog(null, s) }, 'Take it again'),
           h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
@@ -1441,7 +1449,7 @@
 
     const empty = rows.length ? null : h('div', { class: 'empty' },
       h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
-      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; you can always take it again.'));
+      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, you can mark that day afterwards, and you can always take it again.'));
 
     const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
       h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),

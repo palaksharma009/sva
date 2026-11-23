@@ -1493,3 +1493,57 @@ input[type="color"] {
   border-radius: 8px;
   cursor: pointer;
 }
+
+/* --- a sankalpa's day circles, tappable ------------------------------------ */
+
+.pips {
+  gap: 0;
+  margin-left: -5px; /* the first circle lines up with the text above it */
+}
+.pip-btn {
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  line-height: 0;
+}
+button.pip-btn {
+  cursor: pointer;
+}
+.pip-btn .pip {
+  width: 11px;
+  height: 11px;
+}
+button.pip-btn:hover .pip {
+  border-color: var(--text);
+}
+button.pip-btn:hover .pip.on {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.sk-long {
+  display: grid;
+  gap: 4px;
+}
+.ask {
+  display: grid;
+  gap: 12px;
+}
+.ask h2 {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+@media (pointer: coarse) {
+  .pip-btn {
+    padding: 8px;
+  }
+  .pip-btn .pip {
+    width: 13px;
+    height: 13px;
+  }
+  .pips {
+    margin-left: -8px;
+  }
+}

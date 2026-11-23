@@ -12,9 +12,10 @@ mode there are no long-term or short-term goals: a sankalpa is one thing you
 resolve to do every day, for a number of days you choose (required). It has an
 area and its colour, and can have a time, a reminder and a timer like a task.
 
-- **Did it but could not tick it?** A broken sankalpa has an "I did it that
-  day" button. It ticks the missed day afterwards and the sankalpa carries on
-  (press it again for each further day you missed ticking).
+- **Did it but could not tick it?** Each day of a sankalpa is a little circle
+  on its card, and the circles up to today can be tapped. An empty one asks
+  whether you did it that day; say yes and it is filled, and a sankalpa that
+  had broken there carries on. A filled one asks the opposite and unticks it.
 - Tick it each day. **Miss a day and it is broken at once**; "Take it again"
   starts it over from day one.
 - **Keep it to its last day** and the picture grows by one.

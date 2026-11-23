@@ -1226,8 +1226,8 @@
        upcoming  it has not started yet
        active    every day so far is ticked (today may still be open)
        broken    a day went by without a tick; it ended there, at once.
-                 If you did do it and only missed ticking it, "I did it that day"
-                 on the card ticks that day afterwards and the sankalpa carries on.
+                 If you did do it and only missed ticking it, tap that day's circle
+                 on the card: it asks, ticks the day, and the sankalpa carries on.
        kept      every day to the last is ticked; one tangle of the yarn comes loose */
 
   const MODE_KEY = 'sva.mode';
@@ -1368,16 +1368,77 @@
     }, Schedule.today());
   }
 
-  /* One mark per day: filled = done, ringed = today. Long sankalpas get a bar instead. */
+  /* A question with two plain answers. Resolves true for yes, false for no (or Esc). */
+  function ask(question, note, yes, no) {
+    return new Promise(done => {
+      const dlg = $('ask-dialog');
+      $('ask-text').textContent = question;
+      $('ask-note').textContent = note || '';
+      $('ask-note').hidden = !note;
+      $('ask-yes').textContent = yes;
+      $('ask-no').textContent = no;
+      const finish = answer => {
+        $('ask-yes').onclick = $('ask-no').onclick = dlg.oncancel = null;
+        dlg.close();
+        done(answer);
+      };
+      $('ask-yes').onclick = () => finish(true);
+      $('ask-no').onclick = () => finish(false);
+      dlg.oncancel = e => { e.preventDefault(); finish(false); };
+      dlg.showModal();
+    });
+  }
+
+  /* Tapping a day's circle: an empty one asks whether you did it that day, a filled one
+     whether you did not. This is how a day you did but could not tick gets put right. */
+  async function askDay(s, d) {
+    const today = Schedule.today();
+    const when = d === today ? 'today' : 'on ' + longDate(d);
+    if (s.done[d]) {
+      const sure = await ask('Did you not do "' + s.title + '" ' + when + '?',
+        d < today ? 'Unticking a past day breaks the sankalpa on that day.' : '',
+        'I did not do it', 'I did do it');
+      if (!sure) return;
+      setSkDone(s, d, false);
+    } else {
+      const did = await ask('Did you do "' + s.title + '" ' + when + '?', '', 'Yes, I did it', 'No');
+      if (!did) return;
+      setSkDone(s, d, true);
+    }
+    render();
+  }
+
+  /* One circle per day: filled = done, ringed = today, red ring = the day it broke.
+     Circles up to today can be tapped (see askDay). A long sankalpa shows a bar for the
+     whole of it, and circles for the 30 days that matter now. */
   function skDays(s, st, today) {
     const count = Object.keys(s.done).length;
-    if (s.days > 60) return h('div', { class: 'bar' }, h('i', { style: 'width:' + Math.round((count / s.days) * 100) + '%' }));
-    const pips = [];
-    for (let n = 0; n < s.days; n++) {
-      const d = Schedule.addDays(s.start, n);
-      pips.push(h('i', { class: 'pip' + (s.done[d] ? ' on' : '') + (d === today && st.state === 'active' ? ' now' : '') + (st.state === 'broken' && d === st.on ? ' miss' : '') }));
+    const end = Schedule.addDays(s.start, s.days - 1);
+    const long = s.days > 60;
+    let from = s.start, to = end;
+    if (long) {
+      from = st.state === 'broken' ? st.on : Schedule.addDays(today < end ? today : end, -29);
+      if (from < s.start) from = s.start;
+      to = Schedule.addDays(from, 29);
+      if (to > end) to = end;
     }
-    return h('div', { class: 'pips', 'aria-label': count + ' of ' + s.days + ' days done' }, pips);
+    const pips = [];
+    for (let d = from; d <= to; d = Schedule.addDays(d, 1)) {
+      const dot = h('i', { class: 'pip' + (s.done[d] ? ' on' : '') + (d === today && st.state === 'active' ? ' now' : '') + (st.state === 'broken' && d === st.on ? ' miss' : '') });
+      pips.push(d <= today
+        ? h('button', {
+          type: 'button', class: 'pip-btn', title: Schedule.niceDate(d),
+          'aria-label': Schedule.niceDate(d) + ': ' + (s.done[d] ? 'done' : 'not done') + '. Change',
+          onclick: () => askDay(s, d),
+        }, dot)
+        : h('span', { class: 'pip-btn', title: Schedule.niceDate(d) }, dot));      // a day that has not come yet
+    }
+    const row = h('div', { class: 'pips', role: 'group', 'aria-label': count + ' of ' + s.days + ' days done' }, pips);
+    if (!long) return row;
+    return h('div', { class: 'sk-long' },
+      h('div', { class: 'bar' }, h('i', { style: 'width:' + Math.round((count / s.days) * 100) + '%' })),
+      h('p', { class: 'hint' }, Schedule.niceDate(from) + ' to ' + Schedule.niceDate(to) + ':'),
+      row);
   }
 
   function skCard(r, today) {
@@ -1415,13 +1476,8 @@
         s.description && st.state === 'active' ? h('p', { class: 'goal-desc' }, s.description) : null,
         st.state === 'upcoming' ? null : skDays(s, st, today),
         tags.length && st.state !== 'kept' && st.state !== 'broken' ? h('div', { class: 'badges' }, tags.map(t => h('span', { class: 'badge' }, t))) : null,
-        st.state === 'broken' ? h('p', { class: 'hint' }, 'Did it on ' + Schedule.niceDate(st.on) + ' but could not tick it here? Mark that day done and it carries on.') : null,
+        st.state === 'broken' ? h('p', { class: 'hint' }, 'Did it on ' + Schedule.niceDate(st.on) + ' but could not tick it here? Tap that day\'s circle (the red one).') : null,
         h('div', { class: 'sk-btns' },
-          // ticking the missed day afterwards: the day counts, and the sankalpa is no longer broken there
-          st.state === 'broken' && h('button', {
-            type: 'button', class: 'small primary',
-            onclick: () => { setSkDone(s, st.on, true); render(); },
-          }, 'I did it that day'),
           st.state === 'active' && s.timer.enabled && h('button', { type: 'button', class: 'small primary', onclick: () => skTimer(s, st) }, 'Open timer'),
           (st.state === 'kept' || st.state === 'broken') && h('button', { type: 'button', class: 'small', onclick: () => openSkDialog(null, s) }, 'Take it again'),
           h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
@@ -1449,7 +1505,7 @@
 
     const empty = rows.length ? null : h('div', { class: 'empty' },
       h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
-      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, you can mark that day afterwards, and you can always take it again.'));
+      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, tap that day\'s circle to mark it afterwards, and you can always take it again.'));
 
     const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
       h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),

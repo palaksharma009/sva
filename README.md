@@ -19,8 +19,8 @@ area and its colour, and can have a time, a reminder and a timer like a task.
 - Tick it each day. **Miss a day and it is broken at once**; "Take it again"
   starts it over from day one.
 - **Keep it to its last day** and the picture grows by one. **Hide**, beside
-  the "Kept" heading, takes the finished ones off the page (they still count,
-  and **Show** brings them back).
+  the "Kept" and "Broken" headings, takes those off the page (they still
+  count, and **Show** brings them back).
 - **The picture** is on screen the whole time in this mode, and comes in two
   kinds; the switch under it changes between them, and both show the same
   progress:

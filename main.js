@@ -1483,7 +1483,7 @@
           h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
   }
 
-  /* Which blocks of the Sankalpas page are hidden (the kept ones). Remembered on this device only. */
+  /* Which blocks of the Sankalpas page are hidden (Broken, Kept). Remembered on this device only. */
   const SK_HIDE_KEY = 'sva.skHidden';
   let skHidden = new Set();
   try { skHidden = new Set(JSON.parse(localStorage.getItem(SK_HIDE_KEY)) || []); } catch (e) { /* start with everything shown */ }
@@ -1532,7 +1532,7 @@
     };
 
     view.replaceChildren(...[head, tiles, empty,
-      block('Today', active), block('Not started yet', upcoming), block('Broken', broken), block('Kept', kept, 'kept')].filter(Boolean));
+      block('Today', active), block('Not started yet', upcoming), block('Broken', broken, 'broken'), block('Kept', kept, 'kept')].filter(Boolean));
   }
 
   /* --- sankalpa form */

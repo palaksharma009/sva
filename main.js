@@ -1483,6 +1483,17 @@
           h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
   }
 
+  /* Which blocks of the Sankalpas page are hidden (the kept ones). Remembered on this device only. */
+  const SK_HIDE_KEY = 'sva.skHidden';
+  let skHidden = new Set();
+  try { skHidden = new Set(JSON.parse(localStorage.getItem(SK_HIDE_KEY)) || []); } catch (e) { /* start with everything shown */ }
+
+  function toggleSkHidden(key) {
+    if (!skHidden.delete(key)) skHidden.add(key);
+    try { localStorage.setItem(SK_HIDE_KEY, JSON.stringify([...skHidden])); } catch (e) { /* just not remembered */ }
+    render();
+  }
+
   function renderSankalpas() {
     const today = Schedule.today();
     const rows = state.sankalpas.map(s => ({ s, st: skStatus(s, today) }));
@@ -1507,12 +1518,21 @@
       h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
       h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, tap that day\'s circle to mark it afterwards, and you can always take it again.'));
 
-    const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
-      h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),
-      h('ul', { class: 'sks' }, list.map(r => skCard(r, today)))) : null);
+    // a block with a key can be hidden: its heading stays, with a Show button (remembered on this device)
+    const block = (title, list, key) => {
+      if (!list.length) return null;
+      const shut = !!key && skHidden.has(key);
+      return h('section', { class: 'sk-block' },
+        h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length),
+          key && h('button', {
+            type: 'button', class: 'small ghost sk-hide', 'aria-expanded': String(!shut),
+            onclick: () => toggleSkHidden(key),
+          }, shut ? 'Show' : 'Hide')),
+        shut ? null : h('ul', { class: 'sks' }, list.map(r => skCard(r, today))));
+    };
 
     view.replaceChildren(...[head, tiles, empty,
-      block('Today', active), block('Not started yet', upcoming), block('Broken', broken), block('Kept', kept)].filter(Boolean));
+      block('Today', active), block('Not started yet', upcoming), block('Broken', broken), block('Kept', kept, 'kept')].filter(Boolean));
   }
 
   /* --- sankalpa form */

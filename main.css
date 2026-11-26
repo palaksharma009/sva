@@ -1358,6 +1358,10 @@ body.mode-sankalpa #nav a[data-route="sankalpa"] {
 .sk-block > h2 {
   margin-bottom: 10px;
 }
+.sk-hide {
+  margin-left: 10px;
+  vertical-align: middle;
+}
 .sks {
   list-style: none;
   margin: 0;

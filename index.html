@@ -87,8 +87,8 @@
 
       <h2>Sankalpa mode</h2>
       <p>The switch at the top turns Sva into something simpler. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days. No long-term or short-term goals here, only the vow and its days.</p>
-      <p>Tick it each day. Miss a day and that sankalpa is broken at once; you can take it again from day one. If you did do it and only could not open Sva to tick it, tap that day's little circle on the sankalpa: Sva asks whether you did it, and on yes the day is ticked and it carries on as if nothing happened. Tapping a filled circle asks the opposite and unticks it. Keep it to its last day and the lotus opens one more petal, in a soft shade of that sankalpa's area colour. It starts with none and is in full bloom at a thousand; then you can start again if you like.</p>
-      <p>Under the picture you can switch from the lotus to the yarn: a tangled lump of thread that loses one tangle for every sankalpa you keep. Both show the same progress. Settings, beside the switch, lets you give the whole lotus one colour of your choosing, and changes how many petals it takes.</p>
+      <p>Tick it each day. Miss a day and that sankalpa is broken at once; you can take it again from day one. If you did do it and only could not open Sva to tick it, tap that day's little circle on the sankalpa: Sva asks whether you did it, and on yes the day is ticked and it carries on as if nothing happened. Tapping a filled circle asks the opposite and unticks it. Complete it to its last day and the lotus opens one more petal, in a soft shade of that sankalpa's area colour. It starts with none and is in full bloom at a thousand; then you can start again if you like.</p>
+      <p>Under the picture you can switch from the lotus to the yarn: a tangled lump of thread that loses one tangle for every sankalpa you complete. Both show the same progress. Settings, beside the switch, lets you give the whole lotus one colour of your choosing, and changes how many petals it takes.</p>
 
       <h2>Good to know</h2>
       <p>Your goals are kept in your own account, behind your email and password, so they are the same on your phone, your computer and anywhere else you sign in. Nobody else can open them. Reminders appear while Sva is open.</p>
@@ -126,7 +126,7 @@
         <input id="g-target" type="date">
       </label>
       <label class="field" id="g-cat-field"><span>Area</span>
-        <select id="g-cat"></select>
+        <select id="g-cat"></select>|
       </label>
       <label class="field" id="g-parent-field"><span>Inside long-term goal</span>
         <select id="g-parent"></select>
@@ -211,7 +211,7 @@
     <form id="yarn-form">
       <h2>The picture</h2>
       <p id="y-now" class="muted"></p>
-      <label class="field"><span>How many petals the lotus has, and tangles the yarn <em>(one for every sankalpa you keep)</em></span>
+      <label class="field"><span>How many petals the lotus has, and tangles the yarn <em>(one for every sankalpa you complete)</em></span>
         <input id="y-total" type="number" min="1" max="2000" required>
       </label>
       <label class="field"><span>Petals of the lotus</span>

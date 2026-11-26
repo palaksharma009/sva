@@ -1356,7 +1356,7 @@
     else delete s.done[date];
     save();
     if (before !== 'kept' && skStatus(s, Schedule.today()).state === 'kept') {
-      toast({ title: 'Sankalpa kept', body: s.title + ' · ' + s.days + (s.days === 1 ? ' day' : ' days') + (visual === 'lotus' ? '. A petal has opened.' : '. One tangle has come loose.'), cls: 'cat-' + s.category });
+      toast({ title: 'Sankalpa completed', body: s.title + ' · ' + s.days + (s.days === 1 ? ' day' : ' days') + (visual === 'lotus' ? '. A petal has opened.' : '. One tangle has come loose.'), cls: 'cat-' + s.category });
     }
   }
 
@@ -1454,7 +1454,7 @@
       meta = 'Day ' + st.day + ' of ' + s.days + (s.time ? ' · ' + s.time : '') + ' · until ' + Schedule.niceDate(st.end);
     } else if (st.state === 'kept') {
       mark = h('span', { class: 'tick on still', 'aria-hidden': 'true' }, '✓');
-      meta = 'Kept for ' + dayWord + ' · finished ' + Schedule.niceDate(st.on);
+      meta = 'Completed ' + dayWord + ' · finished ' + Schedule.niceDate(st.on);
     } else if (st.state === 'broken') {
       mark = h('span', { class: 'tick still broken', 'aria-hidden': 'true' }, '×');
       meta = 'Broken on day ' + st.day + ' of ' + s.days + ' · ' + Schedule.niceDate(st.on);
@@ -1483,7 +1483,7 @@
           h('button', { type: 'button', class: 'small ghost', onclick: () => openSkDialog(s) }, 'Edit'))));
   }
 
-  /* Which blocks of the Sankalpas page are hidden (Broken, Kept). Remembered on this device only. */
+  /* Which blocks of the Sankalpas page are hidden (Broken, Completed). Remembered on this device only. */
   const SK_HIDE_KEY = 'sva.skHidden';
   let skHidden = new Set();
   try { skHidden = new Set(JSON.parse(localStorage.getItem(SK_HIDE_KEY)) || []); } catch (e) { /* start with everything shown */ }
@@ -1512,11 +1512,11 @@
         h('button', { type: 'button', class: 'primary', onclick: () => openSkDialog(null) }, '+ Sankalpa')));
 
     const tile = (value, label) => h('div', { class: 'tile' }, h('b', null, String(value)), h('span', null, label));
-    const tiles = h('div', { class: 'tiles three' }, tile(active.length, 'Running'), tile(kept.length, 'Kept'), tile(broken.length, 'Broken'));
+    const tiles = h('div', { class: 'tiles three' }, tile(active.length, 'Running'), tile(kept.length, 'Completed'), tile(broken.length, 'Broken'));
 
     const empty = rows.length ? null : h('div', { class: 'empty' },
       h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
-      h('p', null, 'Tick it each day. Keep it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, tap that day\'s circle to mark it afterwards, and you can always take it again.'));
+      h('p', null, 'Tick it each day. Complete it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, tap that day\'s circle to mark it afterwards, and you can always take it again.'));
 
     // a block with a key can be hidden: its heading stays, with a Show button (remembered on this device)
     const block = (title, list, key) => {
@@ -1532,7 +1532,7 @@
     };
 
     view.replaceChildren(...[head, tiles, empty,
-      block('Today', active), block('Not started yet', upcoming), block('Broken', broken, 'broken'), block('Kept', kept, 'kept')].filter(Boolean));
+      block('Today', active), block('Not started yet', upcoming), block('Broken', broken, 'broken'), block('Completed', kept, 'kept')].filter(Boolean));
   }
 
   /* --- sankalpa form */
@@ -1615,7 +1615,7 @@
   $('k-delete').addEventListener('click', () => {
     const at = keptList().findIndex(r => r.s === kctx);
     const msg = at >= 0
-      ? 'Delete "' + kctx.title + '"? It was kept, so its tangle goes back into the yarn.'
+      ? 'Delete "' + kctx.title + '"? It was completed, so its tangle goes back into the yarn.'
       : 'Delete "' + kctx.title + '"?';
     if (!confirm(msg)) return;
     if (at >= 0 && at < state.yarn.offset) state.yarn.offset--;      // it belonged to an earlier yarn
@@ -1642,7 +1642,7 @@
     const y = yarnData();
     $('y-total').value = y.total;
     $('y-total').min = Math.max(1, y.freed.length);
-    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas kept so far on this picture.';
+    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas completed so far on this picture.';
     lotusPicked = isHex(state.yarn.lotus) ? state.yarn.lotus : '';
     $('y-lotus').value = lotusPicked || lotusDefault();
     $('y-petals').value = state.yarn.petals === 'one' ? 'one' : 'area';

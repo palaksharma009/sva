@@ -18,19 +18,19 @@ area and its colour, and can have a time, a reminder and a timer like a task.
   had broken there carries on. A filled one asks the opposite and unticks it.
 - Tick it each day. **Miss a day and it is broken at once**; "Take it again"
   starts it over from day one.
-- **Keep it to its last day** and the picture grows by one. **Hide**, beside
-  the "Kept" and "Broken" headings, takes those off the page (they still
+- **Complete it to its last day** and the picture grows by one. **Hide**, beside
+  the "Completed" and "Broken" headings, takes those off the page (they still
   count, and **Show** brings them back).
 - **The picture** is on screen the whole time in this mode, and comes in two
   kinds; the switch under it changes between them, and both show the same
   progress:
   - **The lotus** (the usual one) starts with no petals, only its golden
-    heart. Each kept sankalpa opens one more petal, spiralling out from the
+    heart. Each completed sankalpa opens one more petal, spiralling out from the
     heart, until it is in full bloom at 1000. A petal takes the colour of its
     sankalpa's area, softened into a pastel; Settings can make the whole
     lotus one colour of your choosing instead.
   - **The yarn** is a tangled lump of thread in the three area colours, 1000
-    tangles to begin with. Each kept sankalpa pulls one knot out and lays it
+    tangles to begin with. Each completed sankalpa pulls one knot out and lays it
     down neatly on the coil around the lump.
 - Both turn slowly by themselves, and you can drag them with the mouse or a
   finger to spin them. **Settings**, beside the switch, changes how the lotus

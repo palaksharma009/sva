@@ -18,9 +18,10 @@ area and its colour, and can have a time, a reminder and a timer like a task.
   had broken there carries on. A filled one asks the opposite and unticks it.
 - Tick it each day. **Miss a day and it is broken at once**; "Take it again"
   starts it over from day one.
-- **Complete it to its last day** and the picture grows by one. **Hide**, beside
-  the "Completed" and "Broken" headings, takes those off the page (they still
-  count, and **Show** brings them back).
+- **Complete it to its last day** and the picture grows by one. It then moves to
+  **History**, as does a broken one once you take it again. **Hide**, beside
+  the "Broken" heading, takes the broken ones off the page (**Show** brings
+  them back).
 - **The picture** is on screen the whole time in this mode, and comes in two
   kinds; the switch under it changes between them, and both show the same
   progress:
@@ -45,6 +46,18 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
 
 - **Board** — what is on for the chosen day, one column per area. Click a task
   to see its details next to the board; tick it when it's done.
+- **The picture** — the lotus (or the yarn) is here too, with one petal /
+  tangle for every task you have. A task's petal is open while the task is
+  done: a task with no date once it is ticked, a task on the calendar when you
+  ticked it the last time it was due (today only counts once ticked). Miss it
+  and the petal closes until you do it again.
+- **History** — what is finished goes here, so the main pages only show what
+  is still running. A task with no date moves here the day after you tick it; a
+  task on the calendar after its last day. A short-term goal follows when all
+  its tasks are over, a long-term goal when all its short-term goals are;
+  "Continue it" gives a finished goal something new to do and brings it back.
+  In Sankalpa mode it holds the completed sankalpas and the broken ones you
+  have since taken again (a later sankalpa with the same name).
 - **Progress** — a graph of your consistency over time, all three areas
   together: how much of what was on the calendar you ticked off, over the 7 days
   up to each date, today included. Miss a day and the line drops; keep going and

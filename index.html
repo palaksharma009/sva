@@ -25,6 +25,7 @@
       <a href="#shareerik" data-route="shareerik">Shareerik</a>
       <a href="#adhyaatmik" data-route="adhyaatmik">Adhyaatmik</a>
       <a href="#maansik" data-route="maansik">Maansik</a>
+      <a href="#history" data-route="history">History</a>
     </nav>
     <span id="sync-state" aria-live="polite"></span>
     <a class="about-link" href="#about" data-route="about">About</a>
@@ -47,7 +48,7 @@
     </form>
   </div>
 
-  <!-- Sankalpa mode: the yarn stays on screen the whole time (drawn by yarn.js) -->
+  <!-- the picture (lotus.js / yarn.js): on screen the whole time, in both modes -->
   <section id="yarn" aria-label="Your progress, as a picture" hidden>
     <div id="yarn-canvas"></div>
     <div class="yarn-foot">
@@ -81,9 +82,13 @@
         <li><strong>Add short-term goals inside it.</strong> The nearer milestones on the way there.</li>
         <li><strong>Add tasks to each short-term goal.</strong> The actual things you do. Describe them, put them on the calendar (once or repeating), and switch on a reminder or a timer if the task needs one. A task can be of a different nature than its goal: breathing practice for a running goal is Adhyaatmik work for a Shareerik goal. Set its Nature and it shows up in that column.</li>
         <li><strong>Open the Board each day.</strong> It shows what is planned in all three areas. Click a task to see its details, open its timer and practise, then tick it off.</li>
+        <li><strong>Watch the picture.</strong> The lotus has one petal for every task you have. A task's petal is open while the task is done: a task with no date once you tick it, a task on the calendar when you ticked it the last time it was due. Miss it and the petal closes until you do it again. You can switch to the yarn under the picture: one tangle per task instead.</li>
         <li><strong>Look at Progress now and then.</strong> It draws how much of what you planned you actually did, all three areas together. A missed day pulls the line down; a steady week lifts it again.</li>
       </ol>
       <p>The breathing dot lives on the Adhyaatmik page. Open it any time you want a few calm minutes, or attach it to a task's timer.</p>
+
+      <h2>History</h2>
+      <p>What is finished moves to the History page, so the main pages only show what is still running. In Goals mode a task goes there once it is over: a task with no date the day after you tick it, a task on the calendar after its last day. A short-term goal follows when all its tasks are over, a long-term goal when all its short-term goals are; "Continue it" gives a finished goal something new to do and brings it back. In Sankalpa mode, History holds the sankalpas you completed and the broken ones you have since taken again.</p>
 
       <h2>Sankalpa mode</h2>
       <p>The switch at the top turns Sva into something simpler. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days. No long-term or short-term goals here, only the vow and its days.</p>
@@ -211,7 +216,7 @@
     <form id="yarn-form">
       <h2>The picture</h2>
       <p id="y-now" class="muted"></p>
-      <label class="field"><span>How many petals the lotus has, and tangles the yarn <em>(one for every sankalpa you complete)</em></span>
+      <label class="field" id="y-total-field"><span>How many petals the lotus has, and tangles the yarn <em>(one for every sankalpa you complete)</em></span>
         <input id="y-total" type="number" min="1" max="2000" required>
       </label>
       <label class="field"><span>Petals of the lotus</span>

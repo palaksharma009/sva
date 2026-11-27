@@ -1284,7 +1284,8 @@ body.dragging-short .goal.drop {
 body.mode-sankalpa #nav a {
   display: none;
 }
-body.mode-sankalpa #nav a[data-route="sankalpa"] {
+body.mode-sankalpa #nav a[data-route="sankalpa"],
+body.mode-sankalpa #nav a[data-route="history"] {
   display: block;
 }
 
@@ -1550,4 +1551,49 @@ button.pip-btn:hover .pip.on {
   .pips {
     margin-left: -8px;
   }
+}
+
+/* --- the picture in Goals mode ---------------------------------------------
+   Beside the page on a very wide screen; otherwise a band at the top of the
+   page that scrolls away with it (the board needs the width). */
+
+@media (min-width: 1281px) {
+  body.mode-goals #yarn {
+    position: fixed;
+    left: 0;
+    top: var(--top-h, 58px);
+    bottom: 0;
+    width: 34%;
+    padding: 18px 18px 22px;
+    border-right: 1px solid var(--line);
+  }
+  body.mode-goals #view {
+    margin: 0 0 0 34%;
+    max-width: none;
+  }
+}
+@media (max-width: 1280px) {
+  body.mode-goals #yarn {
+    height: 40vh;
+    min-height: 240px;
+    padding: 8px 12px 6px;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* --- the History page -------------------------------------------------------- */
+
+.row-task.hist {
+  border-left: 3px solid var(--accent);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row-task.hist .card-main {
+  flex: 1;
+  min-width: 200px;
+}
+.hist-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }

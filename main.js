@@ -162,12 +162,52 @@
     }).sort((a, b) => timeKey(a.task).localeCompare(timeKey(b.task)));
   }
 
+  /* --- what is over, and so lives on the History page ----------------------------
+     Nothing is stored for this; it is read off the calendar and the ticks each time.
+       a task with no date   once it was ticked on an earlier day (today's tick can
+                             still be undone where it is)
+       a task with a date    once its last day has passed (never, if it repeats for ever)
+       a short-term goal     it has tasks and all of them are over
+       a long-term goal      it has short-term goals and all of them are over
+     Give a finished goal something new to do and it is back on its area's page. */
+
+  const lastDayCache = new Map();
+
+  /* The last day a schedule falls on; '' if it never ends. */
+  function lastDay(s) {
+    if (!s.repeat || s.repeat === 'none') return s.start;
+    if (s.end === 'until' && s.until) return s.until;
+    if (s.end !== 'count') return '';
+    const key = JSON.stringify(s);
+    if (!lastDayCache.has(key)) {
+      const max = Math.max(1, parseInt(s.count, 10) || 1);
+      let seen = 0, last = s.start;
+      for (let d = s.start, i = 0; seen < max && i < 20000; d = Schedule.addDays(d, 1), i++) {
+        if (Schedule.occursOn(Object.assign({}, s, { end: 'never' }), d)) { seen++; last = d; }
+      }
+      lastDayCache.set(key, last);
+    }
+    return lastDayCache.get(key);
+  }
+
+  function taskOver(task, today) {
+    if (!task.schedule) {
+      const on = state.done[task.id + '|once'];
+      return typeof on === 'string' ? on < today : false;
+    }
+    if (!task.schedule.start) return false;
+    const last = lastDay(task.schedule);
+    return !!last && last < today;
+  }
+  function shortOver(short, today) { return short.tasks.length > 0 && short.tasks.every(t => taskOver(t, today)); }
+  function goalOver(goal, today) { return goal.shorts.length > 0 && goal.shorts.every(s => shortOver(s, today)); }
+
   /* --- routing -------------------------------------------------------------- */
 
   function route() {
     const r = location.hash.slice(1);
-    if (mode === 'sankalpa') return r === 'about' ? 'about' : 'sankalpa';
-    return r === 'about' || r === 'progress' || CATS.some(c => c.id === r) ? r : 'board';
+    if (mode === 'sankalpa') return r === 'about' || r === 'history' ? r : 'sankalpa';
+    return r === 'about' || r === 'progress' || r === 'history' || CATS.some(c => c.id === r) ? r : 'board';
   }
 
   function render() {
@@ -180,6 +220,7 @@
     if (r === 'sankalpa') renderSankalpas();
     else if (r === 'board') renderBoard();
     else if (r === 'progress') renderProgress();
+    else if (r === 'history') renderHistory();
     else if (r === 'about') {
       view.replaceChildren($('about-content').content.cloneNode(true));   // text lives in index.html
       const acc = view.querySelector('[data-account]');
@@ -402,8 +443,10 @@
   }
 
   function renderCategory(cat) {
-    const goals = state.goals.filter(g => g.category === cat.id);
     const today = Schedule.today();
+    const mine = state.goals.filter(g => g.category === cat.id);
+    const goals = mine.filter(g => !goalOver(g, today));          // finished ones are on the History page
+    const past = mine.length - goals.length;
 
     const head = h('div', { class: 'page-head cat-' + cat.id },
       h('div', null,
@@ -414,15 +457,17 @@
         h('button', { type: 'button', class: 'primary', onclick: () => openGoalDialog({ kind: 'goal', cat }) }, '+ Long-term goal')));
 
     // tasks of this nature that serve goals in the other areas
-    const guests = entries().filter(e => isGuest(e) && natureOf(e) === cat.id);
+    const guests = entries().filter(e => isGuest(e) && natureOf(e) === cat.id && !taskOver(e.task, today));
 
     const empty = goals.length || guests.length ? null : h('div', { class: 'empty' },
-      h('p', null, 'No ' + cat.name.toLowerCase() + ' goals yet.'),
+      h('p', null, past ? 'Nothing running here now. Your finished ' + cat.name + ' goals are on the History page.' : 'No ' + cat.name.toLowerCase() + ' goals yet.'),
       h('p', null, 'Start with a long-term goal, add short-term goals inside it, then the tasks for each one.'));
 
     const list = goals.map(goal => {
       const shut = folded.has(goal.id);
-      const nTasks = goal.shorts.reduce((n, s) => n + s.tasks.length, 0);
+      const shorts = goal.shorts.filter(s => !shortOver(s, today));
+      const live = s => s.tasks.filter(t => !taskOver(t, today));
+      const nTasks = shorts.reduce((n, s) => n + live(s).length, 0);
       return h('article', {
         class: 'goal cat-' + cat.id + (shut ? ' folded' : ''), draggable: 'true',
         ondragstart: e => {
@@ -460,12 +505,13 @@
           h('h2', null, goal.title),
           goal.target && h('p', { class: 'target' }, 'Target: ' + Schedule.niceDate(goal.target)),
           shut
-            ? h('p', { class: 'target' }, goal.shorts.length + (goal.shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + nTasks + (nTasks === 1 ? ' task' : ' tasks'))
+            ? h('p', { class: 'target' }, shorts.length + (shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + nTasks + (nTasks === 1 ? ' task' : ' tasks'))
             : goal.description && h('p', { class: 'goal-desc' }, goal.description)),
         h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'goal', cat, goal }) }, 'Edit')),
 
-      !shut && goal.shorts.map(short => {
+      !shut && shorts.map(short => {
         const sShut = folded.has(short.id);
+        const tasks = live(short);
         return h('section', {
           class: 'short' + (sShut ? ' folded' : ''), draggable: 'true',
           ondragstart: e => {
@@ -490,11 +536,11 @@
             h('h3', null, short.title),
             short.target && h('p', { class: 'target' }, 'Target: ' + Schedule.niceDate(short.target)),
             sShut
-              ? h('p', { class: 'target' }, short.tasks.length + (short.tasks.length === 1 ? ' task' : ' tasks'))
+              ? h('p', { class: 'target' }, tasks.length + (tasks.length === 1 ? ' task' : ' tasks'))
               : short.description && h('p', { class: 'goal-desc' }, short.description)),
           h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'short', cat, goal, short }) }, 'Edit')),
 
-        !sShut && short.tasks.length ? h('ul', { class: 'rows' }, short.tasks.map(task => {
+        !sShut && tasks.length ? h('ul', { class: 'rows' }, tasks.map(task => {
           // unscheduled tasks are ticked here; scheduled ones are ticked per day on the board
           const once = !task.schedule;
           return h('li', { class: 'row-task' + (once && isDone(task, today) ? ' done' : '') },
@@ -528,6 +574,65 @@
       }))) : null;
 
     view.replaceChildren(...[head, empty, ...list, others].filter(Boolean));
+  }
+
+  /* --- history -------------------------------------------------------------------
+     Where finished things go, so the main pages only show what is still running.
+     Goals mode: finished long-term goals, short-term goals and tasks (see taskOver).
+     Sankalpa mode: completed sankalpas, and broken ones you have since taken again. */
+
+  function renderHistory() {
+    if (mode === 'sankalpa') { renderSkHistory(); return; }
+    const today = Schedule.today();
+    const ticks = task => Object.keys(state.done).filter(k => k.split('|')[0] === task.id).length;
+    const taskMeta = task => {
+      if (!task.schedule) return 'Done on ' + Schedule.niceDate(state.done[task.id + '|once']);
+      const n = ticks(task);
+      if (!task.schedule.repeat || task.schedule.repeat === 'none') return (n ? 'Done on ' : 'Not ticked · was on ') + Schedule.niceDate(task.schedule.start);
+      return Schedule.describe(task.schedule) + ' · ticked ' + n + (n === 1 ? ' time' : ' times');
+    };
+    const row = (cat, level, title, meta, buttons) => h('li', { class: 'row-task hist cat-' + cat },
+      h('div', { class: 'card-main' },
+        h('p', { class: 'level' }, level + ' · ' + catOf(cat).name),
+        h('div', { class: 'card-title' }, title),
+        h('div', { class: 'card-meta' }, meta)),
+      h('div', { class: 'hist-btns' }, buttons));
+    const btn = (label, fn) => h('button', { type: 'button', class: 'small ghost', onclick: fn }, label);
+
+    const longs = [], shorts = [], tasks = [];
+    for (const goal of state.goals) {
+      const cat = catOf(goal.category);
+      if (goalOver(goal, today)) {
+        const n = goal.shorts.reduce((a, s) => a + s.tasks.length, 0);
+        longs.push(row(cat.id, 'Long-term goal', goal.title,
+          goal.shorts.length + (goal.shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + n + (n === 1 ? ' task' : ' tasks') + ', all finished',
+          [btn('Continue it', () => openGoalDialog({ kind: 'short', cat, goal })), btn('Edit', () => openGoalDialog({ kind: 'goal', cat, goal }))]));
+        continue;
+      }
+      for (const short of goal.shorts) {
+        if (shortOver(short, today)) {
+          shorts.push(row(cat.id, 'Short-term goal', short.title,
+            goal.title + ' · ' + short.tasks.length + (short.tasks.length === 1 ? ' task' : ' tasks') + ', all finished',
+            [btn('Continue it', () => openTaskDialog(goal, short, null)), btn('Edit', () => openGoalDialog({ kind: 'short', cat, goal, short }))]));
+          continue;
+        }
+        for (const task of short.tasks) {
+          if (!taskOver(task, today)) continue;
+          tasks.push(row(natureOf({ goal, task }), 'Task', task.title, taskMeta(task) + ' · ' + goal.title + ' › ' + short.title,
+            [!task.schedule && btn('Not done after all', () => { setDone(task, today, false); render(); }), btn('Edit', () => openTaskDialog(goal, short, task))]));
+        }
+      }
+    }
+
+    const head = h('div', { class: 'page-head' },
+      h('div', null, h('p', { class: 'eyebrow' }, 'What is finished'), h('h1', null, 'History')));
+    const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
+      h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),
+      h('ul', { class: 'rows' }, list)) : null);
+    const empty = longs.length || shorts.length || tasks.length ? null : h('div', { class: 'empty' },
+      h('p', null, 'Nothing here yet. A task comes here once it is over: a task with no date the day after you tick it, a task on the calendar after its last day.'),
+      h('p', null, 'A short-term goal follows when all its tasks are over, and a long-term goal when all its short-term goals are.'));
+    view.replaceChildren(...[head, empty, block('Long-term goals', longs), block('Short-term goals', shorts), block('Tasks', tasks)].filter(Boolean));
   }
 
   /* --- progress -----------------------------------------------------------------
@@ -694,8 +799,8 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       if (locked()) return;
-      if (mode === 'sankalpa') syncYarn();
-      else if (route() === 'progress') render();
+      syncYarn();
+      if (mode !== 'sankalpa' && route() === 'progress') render();
     }, 150);
   });
 
@@ -1245,6 +1350,7 @@
 
   function applyMode() {
     document.body.classList.toggle('mode-sankalpa', mode === 'sankalpa');
+    document.body.classList.toggle('mode-goals', mode !== 'sankalpa');
     for (const b of document.querySelectorAll('#mode button')) b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false');
   }
 
@@ -1268,7 +1374,31 @@
       .sort((a, b) => (a.st.on === b.st.on ? (a.s.id < b.s.id ? -1 : 1) : a.st.on < b.st.on ? -1 : 1));
   }
 
+  /* Goals mode has the picture too: one petal / tangle for every task you have, and a
+     task's one is open while the task is done. A task with no date: it is ticked. A task
+     on the calendar: the last time it was due, you ticked it (today only counts once it
+     is ticked, since today is not over yet). */
+  function taskDone(task, today) {
+    if (!task.schedule) return !!state.done[task.id + '|once'];
+    if (state.done[task.id + '|' + today] && Schedule.occursOn(task.schedule, today)) return true;
+    const first = task.schedule.start || today;
+    for (let d = Schedule.addDays(today, -1), i = 0; d >= first && i < 400; d = Schedule.addDays(d, -1), i++) {
+      if (Schedule.occursOn(task.schedule, d)) return !!state.done[task.id + '|' + d];
+    }
+    return false;
+  }
+
+  function goalsPicture() {
+    const today = Schedule.today();
+    const all = entries().slice(0, 2000);
+    return {
+      total: Math.max(1, all.length), offset: 0, tasks: all.length,
+      freed: all.filter(e => taskDone(e.task, today)).map(e => natureOf(e)),
+    };
+  }
+
   function yarnData() {
+    if (mode !== 'sankalpa') return goalsPicture();
     const kept = keptList();
     const total = Math.min(2000, Math.max(1, parseInt(state.yarn.total, 10) || 1000));
     const offset = Math.min(kept.length, Math.max(0, parseInt(state.yarn.offset, 10) || 0));
@@ -1300,9 +1430,9 @@
 
   for (const b of document.querySelectorAll('#visual button')) b.addEventListener('click', () => setVisual(b.dataset.visual));
 
-  /* The picture is on screen for as long as Sankalpa mode is. */
+  /* The picture is on screen the whole time, in both modes (not on the sign-in page). */
   function syncYarn() {
-    const on = mode === 'sankalpa' && !locked();
+    const on = !locked();
     const yarn = pictures[visual];
     $('yarn').hidden = !on;
     if (!on) { pictures.lotus.hide(); pictures.yarn.hide(); yarnSig = null; return; }
@@ -1311,7 +1441,7 @@
     yarn.show($('yarn-canvas'));
 
     const y = yarnData();
-    const key = y.total + ':' + y.offset;
+    const key = (mode === 'sankalpa' ? '' : 'goals:') + y.total + ':' + y.offset;
     const sig = visual + ':' + (state.yarn.petals || '') + ':' + (state.yarn.lotus || '') + ':' + key + ':' + y.freed.join(',');
     if (sig !== yarnSig) {
       // how many of these has this device already watched come loose?
@@ -1339,7 +1469,9 @@
       yarn.resize();
     }
     const left = y.total - y.freed.length;
-    if (visual === 'lotus') {
+    if (mode !== 'sankalpa' && !y.tasks) {
+      $('yarn-count').textContent = 'No tasks yet. Every task you add is one more ' + (visual === 'lotus' ? 'petal.' : 'tangle.');
+    } else if (visual === 'lotus') {
       $('yarn-count').textContent = left > 0
         ? y.freed.length + ' of ' + y.total + (y.total === 1 ? ' petal' : ' petals')
         : 'All ' + y.total + ' petals. The lotus is in full bloom.';
@@ -1494,14 +1626,42 @@
     render();
   }
 
-  function renderSankalpas() {
+  /* A broken sankalpa counts as taken again when a later one carries the same name. */
+  function skRetaken(s) {
+    const name = s.title.trim().toLowerCase();
+    return state.sankalpas.some(o => o !== s && o.start > s.start && o.title.trim().toLowerCase() === name);
+  }
+
+  function skRows() {
     const today = Schedule.today();
     const rows = state.sankalpas.map(s => ({ s, st: skStatus(s, today) }));
     const of = k => rows.filter(r => r.st.state === k);
-    const active = of('active').sort((a, b) => (a.s.time || '99:99').localeCompare(b.s.time || '99:99'));
-    const upcoming = of('upcoming').sort((a, b) => a.s.start.localeCompare(b.s.start));
-    const kept = of('kept').sort((a, b) => b.st.on.localeCompare(a.st.on));
-    const broken = of('broken').sort((a, b) => b.st.on.localeCompare(a.st.on));
+    const byEnd = (a, b) => b.st.on.localeCompare(a.st.on);
+    const allBroken = of('broken').sort(byEnd);
+    return {
+      today, rows,
+      active: of('active').sort((a, b) => (a.s.time || '99:99').localeCompare(b.s.time || '99:99')),
+      upcoming: of('upcoming').sort((a, b) => a.s.start.localeCompare(b.s.start)),
+      kept: of('kept').sort(byEnd),
+      broken: allBroken.filter(r => !skRetaken(r.s)),         // still waiting for you
+      retaken: allBroken.filter(r => skRetaken(r.s)),         // history
+    };
+  }
+
+  function renderSkHistory() {
+    const { today, kept, retaken } = skRows();
+    const head = h('div', { class: 'page-head' },
+      h('div', null, h('p', { class: 'eyebrow' }, 'What is finished'), h('h1', null, 'History')));
+    const block = (title, list) => (list.length ? h('section', { class: 'sk-block' },
+      h('h2', null, title, h('span', { class: 'col-count' }, ' ' + list.length)),
+      h('ul', { class: 'sks' }, list.map(r => skCard(r, today)))) : null);
+    const empty = kept.length || retaken.length ? null : h('div', { class: 'empty' },
+      h('p', null, 'Nothing here yet. A sankalpa comes here when you complete it, and a broken one comes here once you have taken it again.'));
+    view.replaceChildren(...[head, empty, block('Completed', kept), block('Broken, and taken again', retaken)].filter(Boolean));
+  }
+
+  function renderSankalpas() {
+    const { today, rows, active, upcoming, kept, broken, retaken } = skRows();
     const left = active.filter(r => !r.st.doneToday).length;
 
     const head = h('div', { class: 'page-head' },
@@ -1512,10 +1672,11 @@
         h('button', { type: 'button', class: 'primary', onclick: () => openSkDialog(null) }, '+ Sankalpa')));
 
     const tile = (value, label) => h('div', { class: 'tile' }, h('b', null, String(value)), h('span', null, label));
-    const tiles = h('div', { class: 'tiles three' }, tile(active.length, 'Running'), tile(kept.length, 'Completed'), tile(broken.length, 'Broken'));
+    const tiles = h('div', { class: 'tiles three' }, tile(active.length, 'Running'), tile(kept.length, 'Completed'), tile(broken.length + retaken.length, 'Broken'));
 
-    const empty = rows.length ? null : h('div', { class: 'empty' },
-      h('p', null, 'No sankalpas yet. A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
+    const empty = active.length || upcoming.length || broken.length ? null : h('div', { class: 'empty' },
+      h('p', null, rows.length ? 'Nothing running now.' : 'No sankalpas yet.'),
+      h('p', null, ' A sankalpa is one thing you resolve to do every day, for a number of days you choose: brush your teeth at night for the next 14 days.'),
       h('p', null, 'Tick it each day. Complete it to the last day and one tangle of the yarn comes loose. Miss a day and that sankalpa is broken; if you did it and only could not tick it, tap that day\'s circle to mark it afterwards, and you can always take it again.'));
 
     // a block with a key can be hidden: its heading stays, with a Show button (remembered on this device)
@@ -1532,7 +1693,8 @@
     };
 
     view.replaceChildren(...[head, tiles, empty,
-      block('Today', active), block('Not started yet', upcoming), block('Broken', broken, 'broken'), block('Completed', kept, 'kept')].filter(Boolean));
+      block('Today', active), block('Not started yet', upcoming), block('Broken', broken, 'broken'),
+      kept.length + retaken.length ? h('p', { class: 'hint' }, h('a', { href: '#history' }, (kept.length + retaken.length) + ' finished in History')) : null].filter(Boolean));
   }
 
   /* --- sankalpa form */
@@ -1642,7 +1804,11 @@
     const y = yarnData();
     $('y-total').value = y.total;
     $('y-total').min = Math.max(1, y.freed.length);
-    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas completed so far on this picture.';
+    const goals = mode !== 'sankalpa';
+    $('y-now').textContent = goals
+      ? (y.tasks ? y.freed.length + ' of ' + y.tasks + (y.tasks === 1 ? ' task' : ' tasks') + ' done. ' : '') + 'In Goals mode the picture has one petal or tangle for every task you have.'
+      : y.freed.length + ' of ' + y.total + ' sankalpas completed so far on this picture.';
+    $('y-total-field').hidden = $('y-again').hidden = goals;      // the tasks decide the number here
     lotusPicked = isHex(state.yarn.lotus) ? state.yarn.lotus : '';
     $('y-lotus').value = lotusPicked || lotusDefault();
     $('y-petals').value = state.yarn.petals === 'one' ? 'one' : 'area';
@@ -1656,8 +1822,10 @@
 
   $('yarn-form').addEventListener('submit', e => {
     e.preventDefault();
-    const y = yarnData();
-    state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
+    if (mode === 'sankalpa') {
+      const y = yarnData();
+      state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
+    }
     state.yarn.lotus = lotusPicked;
     state.yarn.petals = $('y-petals').value === 'one' ? 'one' : '';
     save();

@@ -12,7 +12,7 @@
 
    Garden.show(holder)   put the canvas into this element
    Garden.set(opts)      { flowers: [{ id, title, color, petals: [{ dots: [{ id, color, on }] }] }],
-                           track, heart, ink, onPick(id) }
+                           track, ink, onPick(id) }
    Garden.resize()       the holder changed size
    Garden.hide()         take the canvas away again
    ============================================================================ */
@@ -27,7 +27,7 @@ const Garden = (function () {
   let holder = null, canvas = null, ctx = null;
   let W = 0, H = 0, dpr = 1;
   let flowers = [], cells = [];
-  let track = '#8a8a93', heart = '#f6c85f', ink = '#888';
+  let track = '#8a8a93', ink = '#888';
   let onPick = null;
   let angle = 0, last = 0, lastDraw = 0, running = false;
   let known = null;                 // ids of the dots that were filled the last time we looked
@@ -158,19 +158,19 @@ const Garden = (function () {
       ctx.restore();
     }
 
-    // the heart: hollow until everything in the flower is done
+    // the heart, in the colour of its flower: hollow until everything in the flower is done
     const whole = all > 0 && on === all;
     ctx.beginPath();
     ctx.arc(cell.x, cell.y, core * 0.82, 0, 2 * Math.PI);
     if (whole) {
-      ctx.fillStyle = heart;
+      ctx.fillStyle = f.color;
       ctx.fill();
     } else {
       ctx.globalAlpha = 0.25;
-      ctx.fillStyle = heart;
+      ctx.fillStyle = f.color;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = heart;
+      ctx.strokeStyle = f.color;
       ctx.lineWidth = Math.max(1, R * 0.012);
       ctx.stroke();
     }
@@ -270,7 +270,6 @@ const Garden = (function () {
     if (!canvas) return;
     flowers = opts.flowers || [];
     track = opts.track || track;
-    heart = opts.heart || heart;
     ink = opts.ink || ink;
     onPick = opts.onPick || null;
 

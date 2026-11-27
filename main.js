@@ -1451,7 +1451,7 @@
       const css = getComputedStyle(document.documentElement);
       const cssVar = name => css.getPropertyValue(name).trim();
       pictures.garden.set({
-        flowers: g.flowers, track: cssVar('--yarn-track'), heart: cssVar('--lotus-heart'), ink: cssVar('--muted'),
+        flowers: g.flowers, track: cssVar('--yarn-track'), ink: cssVar('--muted'),
         onPick: id => { const goal = state.goals.find(x => x.id === id); if (goal) location.hash = goal.category; },
       });
       gardenSig = sig;

@@ -1597,3 +1597,14 @@ button.pip-btn:hover .pip.on {
   gap: 6px;
   flex-wrap: wrap;
 }
+
+/* --- Mark complete / Edit, beside a goal's title --------------------------------- */
+
+.head-acts {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: none;
+  max-width: 50%;
+}

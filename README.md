@@ -56,6 +56,10 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
   task on the calendar after its last day. A short-term goal follows when all
   its tasks are over, a long-term goal when all its short-term goals are;
   "Continue it" gives a finished goal something new to do and brings it back.
+  **Mark complete**, on any long-term or short-term goal, sends it to History
+  yourself, with everything inside it: from the next day its tasks are off the
+  Board, send no reminders and are not counted as missed. "Bring it back" in
+  History undoes it.
   In Sankalpa mode it holds the completed sankalpas and the broken ones you
   have since taken again (a later sankalpa with the same name).
 - **Progress** — a graph of your consistency over time, all three areas

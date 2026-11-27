@@ -156,6 +156,7 @@
 
   function dayEntries(date) {
     return entries().filter(e => {
+      if (closedBy(e, date)) return false;                 // its goal was marked complete before this day
       if (e.task.schedule) return Schedule.occursOn(e.task.schedule, date);
       const doneOn = state.done[e.task.id + '|once'];      // unscheduled: stays until ticked
       return !doneOn || doneOn === date;
@@ -169,7 +170,19 @@
        a task with a date    once its last day has passed (never, if it repeats for ever)
        a short-term goal     it has tasks and all of them are over
        a long-term goal      it has short-term goals and all of them are over
-     Give a finished goal something new to do and it is back on its area's page. */
+     Give a finished goal something new to do and it is back on its area's page.
+
+     A goal can also be marked complete by hand ("Mark complete" on its area page).
+     That is stored, as completed: 'YYYY-MM-DD' on the goal. From the next day its tasks
+     are off the Board, send no reminders and are not counted as missed; "Bring it back"
+     on the History page undoes it. */
+
+  /* The day the goal this task serves was marked complete ('' if it was not). */
+  function closedOn(e) {
+    const a = e.goal.completed || '', b = e.short.completed || '';
+    return a && b ? (a < b ? a : b) : a || b;
+  }
+  function closedBy(e, date) { const c = closedOn(e); return !!c && date > c; }
 
   const lastDayCache = new Map();
 
@@ -199,8 +212,19 @@
     const last = lastDay(task.schedule);
     return !!last && last < today;
   }
-  function shortOver(short, today) { return short.tasks.length > 0 && short.tasks.every(t => taskOver(t, today)); }
-  function goalOver(goal, today) { return goal.shorts.length > 0 && goal.shorts.every(s => shortOver(s, today)); }
+  function shortOver(short, today) { return !!short.completed || (short.tasks.length > 0 && short.tasks.every(t => taskOver(t, today))); }
+  function goalOver(goal, today) { return !!goal.completed || (goal.shorts.length > 0 && goal.shorts.every(s => shortOver(s, today))); }
+
+  async function markComplete(item, kind) {
+    const sure = await ask('Mark "' + item.title + '" complete?',
+      'It moves to History with everything inside it. From tomorrow its tasks no longer show on the Board. You can bring it back from History.',
+      'Mark complete', 'Not yet');
+    if (!sure) return;
+    item.completed = Schedule.today();
+    save();
+    render();
+    toast({ title: kind + ' complete', body: item.title + ' is in History now.' });
+  }
 
   /* --- routing -------------------------------------------------------------- */
 
@@ -457,7 +481,7 @@
         h('button', { type: 'button', class: 'primary', onclick: () => openGoalDialog({ kind: 'goal', cat }) }, '+ Long-term goal')));
 
     // tasks of this nature that serve goals in the other areas
-    const guests = entries().filter(e => isGuest(e) && natureOf(e) === cat.id && !taskOver(e.task, today));
+    const guests = entries().filter(e => isGuest(e) && natureOf(e) === cat.id && !closedOn(e) && !taskOver(e.task, today));
 
     const empty = goals.length || guests.length ? null : h('div', { class: 'empty' },
       h('p', null, past ? 'Nothing running here now. Your finished ' + cat.name + ' goals are on the History page.' : 'No ' + cat.name.toLowerCase() + ' goals yet.'),
@@ -507,7 +531,9 @@
           shut
             ? h('p', { class: 'target' }, shorts.length + (shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + nTasks + (nTasks === 1 ? ' task' : ' tasks'))
             : goal.description && h('p', { class: 'goal-desc' }, goal.description)),
-        h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'goal', cat, goal }) }, 'Edit')),
+        h('div', { class: 'head-acts' },
+          h('button', { type: 'button', class: 'small ghost', onclick: () => markComplete(goal, 'Long-term goal') }, 'Mark complete'),
+          h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'goal', cat, goal }) }, 'Edit'))),
 
       !shut && shorts.map(short => {
         const sShut = folded.has(short.id);
@@ -538,7 +564,9 @@
             sShut
               ? h('p', { class: 'target' }, tasks.length + (tasks.length === 1 ? ' task' : ' tasks'))
               : short.description && h('p', { class: 'goal-desc' }, short.description)),
-          h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'short', cat, goal, short }) }, 'Edit')),
+          h('div', { class: 'head-acts' },
+            h('button', { type: 'button', class: 'small ghost', onclick: () => markComplete(short, 'Short-term goal') }, 'Mark complete'),
+            h('button', { type: 'button', class: 'small ghost', onclick: () => openGoalDialog({ kind: 'short', cat, goal, short }) }, 'Edit'))),
 
         !sShut && tasks.length ? h('ul', { class: 'rows' }, tasks.map(task => {
           // unscheduled tasks are ticked here; scheduled ones are ticked per day on the board
@@ -598,6 +626,8 @@
         h('div', { class: 'card-meta' }, meta)),
       h('div', { class: 'hist-btns' }, buttons));
     const btn = (label, fn) => h('button', { type: 'button', class: 'small ghost', onclick: fn }, label);
+    const back = item => btn('Bring it back', () => { item.completed = ''; save(); render(); });
+    const marked = item => 'Marked complete on ' + Schedule.niceDate(item.completed);
 
     const longs = [], shorts = [], tasks = [];
     for (const goal of state.goals) {
@@ -605,15 +635,15 @@
       if (goalOver(goal, today)) {
         const n = goal.shorts.reduce((a, s) => a + s.tasks.length, 0);
         longs.push(row(cat.id, 'Long-term goal', goal.title,
-          goal.shorts.length + (goal.shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + n + (n === 1 ? ' task' : ' tasks') + ', all finished',
-          [btn('Continue it', () => openGoalDialog({ kind: 'short', cat, goal })), btn('Edit', () => openGoalDialog({ kind: 'goal', cat, goal }))]));
+          goal.shorts.length + (goal.shorts.length === 1 ? ' short-term goal' : ' short-term goals') + ' · ' + n + (n === 1 ? ' task' : ' tasks') + (goal.completed ? ' · ' + marked(goal) : ', all finished'),
+          [goal.completed ? back(goal) : btn('Continue it', () => openGoalDialog({ kind: 'short', cat, goal })), btn('Edit', () => openGoalDialog({ kind: 'goal', cat, goal }))]));
         continue;
       }
       for (const short of goal.shorts) {
         if (shortOver(short, today)) {
           shorts.push(row(cat.id, 'Short-term goal', short.title,
-            goal.title + ' · ' + short.tasks.length + (short.tasks.length === 1 ? ' task' : ' tasks') + ', all finished',
-            [btn('Continue it', () => openTaskDialog(goal, short, null)), btn('Edit', () => openGoalDialog({ kind: 'short', cat, goal, short }))]));
+            goal.title + ' · ' + short.tasks.length + (short.tasks.length === 1 ? ' task' : ' tasks') + (short.completed ? ' · ' + marked(short) : ', all finished'),
+            [short.completed ? back(short) : btn('Continue it', () => openTaskDialog(goal, short, null)), btn('Edit', () => openGoalDialog({ kind: 'short', cat, goal, short }))]));
           continue;
         }
         for (const task of short.tasks) {
@@ -659,7 +689,7 @@
     const onceDone = all.filter(e => !e.task.schedule).map(e => state.done[e.task.id + '|once']).filter(d => typeof d === 'string');
     const cache = {};
     const stat = d => cache[d] || (cache[d] = sched.reduce((a, e) => {
-      if (Schedule.occursOn(e.task.schedule, d)) {
+      if (Schedule.occursOn(e.task.schedule, d) && !closedBy(e, d)) {
         a.planned++;
         if (state.done[e.task.id + '|' + d]) a.done++;
       }
@@ -1193,7 +1223,7 @@
       const t = e.task, s = t.schedule;
       if (!s || !s.time || !t.reminder || !t.reminder.enabled) continue;
       const key = t.id + '|' + today;
-      if (state.fired[key] || isDone(t, today) || !Schedule.occursOn(s, today)) continue;
+      if (state.fired[key] || isDone(t, today) || closedBy(e, today) || !Schedule.occursOn(s, today)) continue;
       const p = s.time.split(':').map(Number);
       const at = p[0] * 60 + p[1];
       // from the reminder time until half an hour past the start; older than that is just noise
@@ -1257,13 +1287,14 @@
   /* Keep only what looks like our data; anything malformed is dropped, not trusted. */
   function cleanGoals(list) {
     const str = v => (typeof v === 'string' ? v : '');
+    const date = v => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');      // completed: the day it was marked complete
     return list.filter(g => g && typeof g === 'object' && str(g.title)).map(g => ({
       id: str(g.id) || uid(),
       category: catId(g.category),
-      title: str(g.title), description: str(g.description), target: str(g.target),
+      title: str(g.title), description: str(g.description), target: str(g.target), completed: date(g.completed),
       shorts: (Array.isArray(g.shorts) ? g.shorts : []).filter(s => s && typeof s === 'object' && str(s.title)).map(s => ({
         id: str(s.id) || uid(),
-        title: str(s.title), description: str(s.description), target: str(s.target),
+        title: str(s.title), description: str(s.description), target: str(s.target), completed: date(s.completed),
         tasks: (Array.isArray(s.tasks) ? s.tasks : []).filter(t => t && typeof t === 'object' && str(t.title)).map(t => ({
           id: str(t.id) || uid(),
           title: str(t.title), description: str(t.description),
@@ -1393,7 +1424,7 @@
     const all = entries().slice(0, 2000);
     return {
       total: Math.max(1, all.length), offset: 0, tasks: all.length,
-      freed: all.filter(e => taskDone(e.task, today)).map(e => natureOf(e)),
+      freed: all.filter(e => !!closedOn(e) || taskDone(e.task, today)).map(e => natureOf(e)),     // a completed goal's petals are all open
     };
   }
 

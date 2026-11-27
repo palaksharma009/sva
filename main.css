@@ -1608,3 +1608,19 @@ button.pip-btn:hover .pip.on {
   flex: none;
   max-width: 50%;
 }
+
+/* --- the garden (Goals mode) ----------------------------------------------------
+   The lotus / yarn switch and their Settings belong to Sankalpa mode only. */
+
+body.mode-goals #visual,
+body.mode-goals #yarn-settings {
+  display: none;
+}
+#yarn-canvas canvas.garden {
+  cursor: pointer; /* tap a flower to open its goal */
+  touch-action: auto;
+}
+body.mode-goals #yarn-canvas {
+  align-self: stretch;
+  width: 100%;
+}

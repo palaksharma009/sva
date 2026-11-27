@@ -46,11 +46,13 @@ Open `https://palaksharma009.github.io/sva/` and sign in. (Double-clicking
 
 - **Board** — what is on for the chosen day, one column per area. Click a task
   to see its details next to the board; tick it when it's done.
-- **The picture** — the lotus (or the yarn) is here too, with one petal /
-  tangle for every task you have. A task's petal is open while the task is
-  done: a task with no date once it is ticked, a task on the calendar when you
-  ticked it the last time it was due (today only counts once ticked). Miss it
-  and the petal closes until you do it again.
+- **The garden** — the picture in this mode. Every long-term goal still
+  running is a flower, each short-term goal in it is a petal, and a petal is
+  made of dots: one for every task. A dot is filled, in the colour of the
+  task's area, while the task is done: a task with no date once it is ticked,
+  a task on the calendar when you ticked it the last time it was due (today
+  only counts once ticked). Miss it and the dot empties until you do it again.
+  Tap a flower to open its goal's page.
 - **History** — what is finished goes here, so the main pages only show what
   is still running. A task with no date moves here the day after you tick it; a
   task on the calendar after its last day. A short-term goal follows when all
@@ -137,6 +139,7 @@ your computer. About → **Save a backup file** gives you a copy of your own.
 | `index.html`, `main.css`, `main.js` | the app |
 | `cloud-config.js`, `sync.js` | which Firebase project to use, and the login + sync |
 | `lotus.js`, `yarn.js`, `anime.min.js` | the lotus and yarn pictures in Sankalpa mode, and the animation library it uses ([anime.js](https://animejs.com), MIT) |
+| `garden.js` | the garden of flowers, the picture in Goals mode |
 | `schedule.js` | the repeat rules ("does this task fall on this day?") |
 | `dot.html`, `styles.css`, `app.js`, `config.js` | the breathing dot, unchanged |
 

@@ -1405,10 +1405,12 @@
       .sort((a, b) => (a.st.on === b.st.on ? (a.s.id < b.s.id ? -1 : 1) : a.st.on < b.st.on ? -1 : 1));
   }
 
-  /* Goals mode has the picture too: one petal / tangle for every task you have, and a
-     task's one is open while the task is done. A task with no date: it is ticked. A task
-     on the calendar: the last time it was due, you ticked it (today only counts once it
-     is ticked, since today is not over yet). */
+  /* Goals mode has its own picture, the garden (garden.js): a flower for every long-term
+     goal still running, a petal for every short-term goal in it, and the petal is made of
+     dots, one for every task. A task's dot is filled while the task is done. A task with
+     no date: it is ticked. A task on the calendar: the last time it was due, you ticked
+     it (today only counts once it is ticked, since today is not over yet). Everything in
+     a goal that was marked complete counts as done. */
   function taskDone(task, today) {
     if (!task.schedule) return !!state.done[task.id + '|once'];
     if (state.done[task.id + '|' + today] && Schedule.occursOn(task.schedule, today)) return true;
@@ -1419,29 +1421,63 @@
     return false;
   }
 
-  function goalsPicture() {
+  function gardenData() {
     const today = Schedule.today();
-    const all = entries().slice(0, 2000);
-    return {
-      total: Math.max(1, all.length), offset: 0, tasks: all.length,
-      freed: all.filter(e => !!closedOn(e) || taskDone(e.task, today)).map(e => natureOf(e)),     // a completed goal's petals are all open
-    };
+    const css = getComputedStyle(document.documentElement);
+    const color = id => css.getPropertyValue('--' + id).trim() || '#888';
+    let tasks = 0, done = 0;
+    const flowers = state.goals.filter(g => !goalOver(g, today)).map(goal => ({
+      id: goal.id, title: goal.title, color: color(goal.category),
+      petals: goal.shorts.map(short => ({
+        dots: short.tasks.map(task => {
+          const on = !!short.completed || taskDone(task, today);
+          tasks++;
+          if (on) done++;
+          return { id: task.id, on, color: color(natureOf({ goal, task })) };
+        }),
+      })),
+    }));
+    return { flowers, tasks, done };
+  }
+
+  function syncGarden() {
+    pictures.lotus.hide();
+    pictures.yarn.hide();
+    yarnSig = null;
+    pictures.garden.show($('yarn-canvas'));
+    const g = gardenData();
+    const sig = JSON.stringify(g.flowers);
+    if (sig !== gardenSig) {
+      const css = getComputedStyle(document.documentElement);
+      const cssVar = name => css.getPropertyValue(name).trim();
+      pictures.garden.set({
+        flowers: g.flowers, track: cssVar('--yarn-track'), heart: cssVar('--lotus-heart'), ink: cssVar('--muted'),
+        onPick: id => { const goal = state.goals.find(x => x.id === id); if (goal) location.hash = goal.category; },
+      });
+      gardenSig = sig;
+    } else {
+      pictures.garden.resize();
+    }
+    const n = g.flowers.length;
+    $('yarn-count').textContent = !n
+      ? 'No goals running. Every long-term goal you add grows a flower here.'
+      : n + (n === 1 ? ' flower' : ' flowers') + ' · ' + (g.tasks ? g.done + ' of ' + g.tasks + (g.tasks === 1 ? ' task' : ' tasks') + ' done' : 'no tasks yet');
   }
 
   function yarnData() {
-    if (mode !== 'sankalpa') return goalsPicture();
     const kept = keptList();
     const total = Math.min(2000, Math.max(1, parseInt(state.yarn.total, 10) || 1000));
     const offset = Math.min(kept.length, Math.max(0, parseInt(state.yarn.offset, 10) || 0));
     return { total, offset, kept, freed: kept.slice(offset, offset + total).map(r => r.s.category) };
   }
 
-  let yarnSig = null;
+  let yarnSig = null, gardenSig = null;
   // if a picture's file did not load, the mode still works, just without that picture
   const noPicture = { show() {}, hide() {}, resize() {}, set() {} };
   const pictures = {
     lotus: typeof Lotus === 'object' ? Lotus : noPicture,
     yarn: typeof Yarn === 'object' ? Yarn : noPicture,
+    garden: typeof Garden === 'object' ? Garden : noPicture,       // Goals mode
   };
 
   // which picture this device shows: the lotus, unless you picked the yarn
@@ -1466,13 +1502,16 @@
     const on = !locked();
     const yarn = pictures[visual];
     $('yarn').hidden = !on;
-    if (!on) { pictures.lotus.hide(); pictures.yarn.hide(); yarnSig = null; return; }
+    if (!on) { pictures.lotus.hide(); pictures.yarn.hide(); pictures.garden.hide(); yarnSig = gardenSig = null; return; }
     document.documentElement.style.setProperty('--top-h', $('top').offsetHeight + 'px');
+    if (mode !== 'sankalpa') { syncGarden(); return; }
+    pictures.garden.hide();
+    gardenSig = null;
     for (const b of document.querySelectorAll('#visual button')) b.setAttribute('aria-pressed', b.dataset.visual === visual ? 'true' : 'false');
     yarn.show($('yarn-canvas'));
 
     const y = yarnData();
-    const key = (mode === 'sankalpa' ? '' : 'goals:') + y.total + ':' + y.offset;
+    const key = y.total + ':' + y.offset;
     const sig = visual + ':' + (state.yarn.petals || '') + ':' + (state.yarn.lotus || '') + ':' + key + ':' + y.freed.join(',');
     if (sig !== yarnSig) {
       // how many of these has this device already watched come loose?
@@ -1500,9 +1539,7 @@
       yarn.resize();
     }
     const left = y.total - y.freed.length;
-    if (mode !== 'sankalpa' && !y.tasks) {
-      $('yarn-count').textContent = 'No tasks yet. Every task you add is one more ' + (visual === 'lotus' ? 'petal.' : 'tangle.');
-    } else if (visual === 'lotus') {
+    if (visual === 'lotus') {
       $('yarn-count').textContent = left > 0
         ? y.freed.length + ' of ' + y.total + (y.total === 1 ? ' petal' : ' petals')
         : 'All ' + y.total + ' petals. The lotus is in full bloom.';
@@ -1835,11 +1872,7 @@
     const y = yarnData();
     $('y-total').value = y.total;
     $('y-total').min = Math.max(1, y.freed.length);
-    const goals = mode !== 'sankalpa';
-    $('y-now').textContent = goals
-      ? (y.tasks ? y.freed.length + ' of ' + y.tasks + (y.tasks === 1 ? ' task' : ' tasks') + ' done. ' : '') + 'In Goals mode the picture has one petal or tangle for every task you have.'
-      : y.freed.length + ' of ' + y.total + ' sankalpas completed so far on this picture.';
-    $('y-total-field').hidden = $('y-again').hidden = goals;      // the tasks decide the number here
+    $('y-now').textContent = y.freed.length + ' of ' + y.total + ' sankalpas completed so far on this picture.';
     lotusPicked = isHex(state.yarn.lotus) ? state.yarn.lotus : '';
     $('y-lotus').value = lotusPicked || lotusDefault();
     $('y-petals').value = state.yarn.petals === 'one' ? 'one' : 'area';
@@ -1853,10 +1886,8 @@
 
   $('yarn-form').addEventListener('submit', e => {
     e.preventDefault();
-    if (mode === 'sankalpa') {
-      const y = yarnData();
-      state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
-    }
+    const y = yarnData();
+    state.yarn.total = Math.min(2000, Math.max(1, y.freed.length, parseInt($('y-total').value, 10) || y.total));
     state.yarn.lotus = lotusPicked;
     state.yarn.petals = $('y-petals').value === 'one' ? 'one' : '';
     save();
